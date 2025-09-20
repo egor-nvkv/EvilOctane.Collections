@@ -18,6 +18,7 @@ namespace Unity.Collections.LowLevel.Unsafe
         IComparable<ByteSpan>,
         IEquatable<ByteSpan>
     {
+        [NativeDisableUnsafePtrRestriction]
         public readonly byte* Ptr;
         public readonly int LengthField;
 
@@ -95,7 +96,7 @@ namespace Unity.Collections.LowLevel.Unsafe
         }
 
         [Obsolete("ByteSpan is immutable.", true)]
-        public void Clear()
+        public readonly void Clear()
         {
             throw new NotSupportedException();
         }
@@ -247,7 +248,7 @@ namespace Unity.Collections.LowLevel.Unsafe
         {
             if (length < 0)
             {
-                throw new ArgumentOutOfRangeException($"Length {length} must be positive.");
+                throw new ArgumentOutOfRangeException($"Length {length} must be non-negative.");
             }
         }
 

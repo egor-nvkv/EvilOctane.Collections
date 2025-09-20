@@ -23,7 +23,7 @@ namespace Unity.Collections.LowLevel.Unsafe
 #endif
 
             result.m_ListData = (UnsafeList<T>*)Memory.Unmanaged.Allocate(sizeof(UnsafeList<T>), UnsafeUtility.AlignOf<UnsafeList<T>>(), allocator);
-            *result.m_ListData = UnsafeListExtensions2.Create<T>(capacity, allocator);
+            *result.m_ListData = UnsafeListExtensions2.Create<T>(capacity, allocator.ToAllocator);
 
             return result;
         }
@@ -46,6 +46,20 @@ namespace Unity.Collections.LowLevel.Unsafe
             where T : unmanaged
         {
             EnsureCapacity(ref self, self.Length + slack);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static UnsafeSpan<T> AsSpanRW<T>(this NativeList<T> self)
+            where T : unmanaged
+        {
+            return new UnsafeSpan<T>(self.GetUnsafePtr(), self.Length);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static UnsafeSpan<T> AsSpanRO<T>(this NativeList<T> self)
+            where T : unmanaged
+        {
+            return new UnsafeSpan<T>(self.GetUnsafeReadOnlyPtr(), self.Length);
         }
     }
 }

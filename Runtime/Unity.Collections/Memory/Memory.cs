@@ -9,48 +9,54 @@ namespace Unity.Collections
 {
     public unsafe struct MemoryExposed
     {
-        public static T* AllocateList<T>(int capacity, AllocatorManager.AllocatorHandle allocator, out int actualCapacity)
-            where T : unmanaged
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void* AllocateList_Inline(int elementSize, int elementAlignment, int capacity, AllocatorManager.AllocatorHandle allocator, out int actualCapacity)
         {
+            CollectionHelper.CheckIntPositivePowerOfTwo(elementSize);
+            CollectionHelper.CheckIntPositivePowerOfTwo(elementAlignment);
+
             CollectionHelper.CheckCapacityInRange(capacity: int.MaxValue, length: capacity);
             CollectionHelper.CheckAllocator(allocator);
 
-            actualCapacity = math.max(capacity, CollectionHelper.CacheLineSize / sizeof(T));
+            Hint.Assume(elementSize >= 1);
+            int elementSizeLog2 = math.ceillog2(elementSize);
+
+            actualCapacity = math.max(capacity, CollectionHelper.CacheLineSize >> elementSizeLog2);
             actualCapacity = math.ceilpow2(actualCapacity);
 
-            return (T*)Memory.Unmanaged.Allocate(size: actualCapacity * sizeof(T), align: UnsafeUtility.AlignOf<T>(), allocator);
+            return Memory.Unmanaged.Allocate(size: actualCapacity * elementSize, align: elementAlignment, allocator);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void EnsureListCapacity<T>(ref UntypedUnsafeListMutable list, int capacity)
+        public static T* AllocateList_Inline<T>(int capacity, AllocatorManager.AllocatorHandle allocator, out int actualCapacity)
             where T : unmanaged
         {
-            if (capacity > list.m_capacity)
-            {
-                IncreaseListCapacityNoInline(ref list, elementSize: sizeof(T), elementAlignment: UnsafeUtility.AlignOf<T>(), capacity: capacity);
-            }
-
-            Assert.IsTrue(list.m_capacity >= capacity);
-            Hint.Assume(list.m_capacity >= capacity);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void EnsureListSlack<T>(ref UntypedUnsafeListMutable list, int slack)
-            where T : unmanaged
-        {
-            EnsureListCapacity<T>(ref list, list.m_length + slack);
+            return (T*)AllocateList_Inline(sizeof(T), UnsafeUtility.AlignOf<T>(), capacity, allocator, out actualCapacity);
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static void IncreaseListCapacityNoInline(ref UntypedUnsafeListMutable list, [AssumeRange(1, int.MaxValue)] int elementSize, [AssumeRange(1, int.MaxValue)] int elementAlignment, [AssumeRange(1, int.MaxValue)] int capacity)
+        public static void* AllocateList_NoInline(int elementSize, int elementAlignment, int capacity, AllocatorManager.AllocatorHandle allocator, out int actualCapacity)
+        {
+            return AllocateList_Inline(elementSize, elementAlignment, capacity, allocator, out actualCapacity);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T* AllocateList_NoInline<T>(int capacity, AllocatorManager.AllocatorHandle allocator, out int actualCapacity)
+            where T : unmanaged
+        {
+            return (T*)AllocateList_NoInline(sizeof(T), UnsafeUtility.AlignOf<T>(), capacity, allocator, out actualCapacity);
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void IncreaseListCapacity_NoInline(ref UntypedUnsafeListMutable list, int elementSize, int elementAlignment, int capacity)
         {
             Assert.IsTrue(list.Ptr != null);
-            Hint.Assume(list.Ptr != null);
-
             Assert.IsTrue(capacity > list.m_capacity);
-            Hint.Assume(capacity > list.m_capacity);
 
-            CollectionHelper.CheckCapacityInRange(capacity: int.MaxValue, length: capacity);
+            CollectionHelper.CheckIntPositivePowerOfTwo(elementSize);
+            CollectionHelper.CheckIntPositivePowerOfTwo(elementAlignment);
+
+            CollectionHelper.CheckCapacityInRange(capacity: capacity, length: list.m_length);
             CollectionHelper.CheckAllocator(list.Allocator);
 
             int capacityCeilpow2 = math.ceilpow2(capacity);
@@ -62,6 +68,26 @@ namespace Unity.Collections
 
             UnsafeUtility.MemCpy(list.Ptr, oldPtr, list.m_length * elementSize);
             Memory.Unmanaged.Free(oldPtr, allocator: list.Allocator);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void EnsureListCapacity<T>(ref UntypedUnsafeListMutable list, int capacity)
+            where T : unmanaged
+        {
+            if (capacity > list.m_capacity)
+            {
+                IncreaseListCapacity_NoInline(ref list, elementSize: sizeof(T), elementAlignment: UnsafeUtility.AlignOf<T>(), capacity: capacity);
+            }
+
+            Assert.IsTrue(list.m_capacity >= capacity);
+            Hint.Assume(list.m_capacity >= capacity);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void EnsureListSlack<T>(ref UntypedUnsafeListMutable list, int slack)
+            where T : unmanaged
+        {
+            EnsureListCapacity<T>(ref list, list.m_length + slack);
         }
 
         public struct Unmanaged

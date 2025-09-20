@@ -15,7 +15,7 @@ namespace Unity.Collections.LowLevel.Unsafe
             if (capacity > self.Capacity)
             {
                 ref UntypedUnsafeListMutable casted = ref As<UnsafeAppendBuffer, UntypedUnsafeListMutable>(ref self);
-                MemoryExposed.IncreaseListCapacityNoInline(ref casted, elementSize: sizeof(byte), elementAlignment: self.Alignment, capacity: capacity);
+                MemoryExposed.IncreaseListCapacity_NoInline(ref casted, elementSize: sizeof(byte), elementAlignment: self.Alignment, capacity: capacity);
             }
 
             Assert.IsTrue(self.Capacity >= capacity);

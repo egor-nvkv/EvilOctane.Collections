@@ -1,0 +1,346 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using Unity.Burst.CompilerServices;
+using Unity.Mathematics;
+using SystemUnsafe = System.Runtime.CompilerServices.Unsafe;
+
+namespace Unity.Collections.LowLevel.Unsafe
+{
+    /// <summary>
+    /// Unmanaged version of <see cref="Span{T}"/>.
+    /// </summary>
+    [DebuggerTypeProxy(typeof(UnsafeSpanTDebugView<>))]
+    [GenerateTestsForBurstCompatibility(GenericTypeArguments = new[] { typeof(int) })]
+    public readonly unsafe struct UnsafeSpan<T> : INativeList<T>, IEnumerable<T>
+        where T : unmanaged
+    {
+        [NativeDisableUnsafePtrRestriction]
+        public readonly T* Ptr;
+        public readonly int LengthField;
+
+        public static UnsafeSpan<T> Empty
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => new(null, 0);
+        }
+
+        public int Length
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            readonly get => CollectionHelper.AssumePositive(LengthField);
+            [Obsolete("UnsafeSpan is immutable.", true)]
+            set => throw new NotSupportedException();
+        }
+
+        public readonly int Capacity
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => Length;
+            [Obsolete("UnsafeSpan is immutable.", true)]
+            set => throw new NotSupportedException();
+        }
+
+        public readonly bool IsEmpty
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => Length == 0;
+        }
+
+        public T this[int index]
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            readonly get
+            {
+                CollectionHelper.CheckIndexInRange(index, LengthField);
+                return Ptr[index];
+            }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set
+            {
+                CollectionHelper.CheckIndexInRange(index, LengthField);
+                Ptr[index] = value;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public UnsafeSpan(T* ptr, int length)
+        {
+            Ptr = ptr;
+            LengthField = length;
+
+            CheckPtr(ptr, length);
+            CheckLengthInRange(length);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly ref T ElementAt(int index)
+        {
+            CollectionHelper.CheckIndexInRange(index, LengthField);
+            return ref Ptr[index];
+        }
+
+        [Obsolete("UnsafeSpan is immutable.", true)]
+        public readonly void Clear()
+        {
+            throw new NotSupportedException();
+        }
+
+        readonly IEnumerator<T> IEnumerable<T>.GetEnumerator()
+        {
+            throw new NotImplementedException();
+        }
+
+        readonly IEnumerator IEnumerable.GetEnumerator()
+        {
+            throw new NotImplementedException();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public override readonly int GetHashCode()
+        {
+            HashCode hashCode = new();
+
+            for (int index = 0; index != Length; ++index)
+            {
+                hashCode.Add(Ptr[index]);
+            }
+
+            return hashCode.ToHashCode();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly Enumerator GetEnumerator()
+        {
+            return new Enumerator(Ptr, Length);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly UnsafeSpan<T> Slice(int startIndex)
+        {
+            int resultLength = Length - startIndex;
+            CheckSliceArgs(startIndex, resultLength);
+
+            return new UnsafeSpan<T>(Ptr + startIndex, resultLength);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly UnsafeSpan<T> Slice(int startIndex, int length)
+        {
+            int resultLength = math.min(length, Length - startIndex);
+            CheckSliceArgs(startIndex, resultLength);
+
+            return new UnsafeSpan<T>(Ptr + startIndex, resultLength);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly UnsafeSpan<U> Reinterpret<U>()
+            where U : unmanaged
+        {
+#if ENABLE_UNITY_COLLECTIONS_CHECKS || UNITY_DOTS_DEBUG
+            if (sizeof(T) != sizeof(U))
+            {
+                // Throws
+                _ = AsNativeArray().Reinterpret<U>();
+            }
+#endif
+
+            return new UnsafeSpan<U>((U*)Ptr, Length);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly NativeArray<T> AsNativeArray()
+        {
+            return NativeArrayUnsafeUtility.ConvertExistingDataToNativeArray<T>(Ptr, Length, Allocator.None);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly NativeArray<T> ToNativeArray(AllocatorManager.AllocatorHandle allocator)
+        {
+            NativeArray<T> array = CollectionHelper.CreateNativeArray<T>(Length, allocator, NativeArrayOptions.UninitializedMemory);
+            array.AsSpanRW().CopyFrom(this);
+            return array;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly void MemClear()
+        {
+            int byteCount = Length * sizeof(T);
+
+            if (Constant.IsConstantExpression(true))
+            {
+                // Burst
+                UnsafeUtility.MemClear(Ptr, byteCount);
+            }
+            else
+            {
+                // No Burst
+                SystemUnsafe.InitBlock(Ptr, 0, (uint)byteCount);
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly void Fill(T value)
+        {
+            if (sizeof(T) == sizeof(byte))
+            {
+                // Byte
+
+                if (Constant.IsConstantExpression(true))
+                {
+                    // Burst
+                    UnsafeUtility.MemSet(Ptr, *(byte*)&value, Length);
+                }
+                else
+                {
+                    // No Burst
+                    SystemUnsafe.InitBlock(Ptr, *(byte*)&value, (uint)Length);
+                }
+            }
+            else
+            {
+                // Generic
+                UnsafeUtility.MemCpyReplicate(Ptr, &value, sizeof(T), Length);
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly void CopyFrom(UnsafeSpan<T> other)
+        {
+            CheckCopyLengths(srcLength: other.LengthField, dstLength: LengthField);
+
+            int byteCount = Length * sizeof(T);
+
+            if (Constant.IsConstantExpression(true))
+            {
+                // Burst
+                UnsafeUtility.MemCpy(Ptr, other.Ptr, byteCount);
+            }
+            else
+            {
+                // No Burst
+                SystemUnsafe.CopyBlock(Ptr, other.Ptr, (uint)byteCount);
+            }
+        }
+
+        [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
+        [Conditional("UNITY_DOTS_DEBUG")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private readonly void CheckPtr(T* ptr, int length)
+        {
+            if (ptr == null && (uint)length > 0)
+            {
+                throw new ArgumentException("Ptr cannot be null with non-zero length.");
+            }
+        }
+
+        [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
+        [Conditional("UNITY_DOTS_DEBUG")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private readonly void CheckLengthInRange(int length)
+        {
+            if (length < 0)
+            {
+                throw new ArgumentOutOfRangeException($"Length {length} must be non-negative.");
+            }
+        }
+
+        [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
+        [Conditional("UNITY_DOTS_DEBUG")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private readonly void CheckSliceArgs(int startIndex, int length)
+        {
+            if (startIndex < 0)
+            {
+                throw new ArgumentOutOfRangeException($"StartIndex {startIndex} must be non-negative.");
+            }
+
+            if (startIndex > Length)
+            {
+                throw new ArgumentOutOfRangeException($"StartIndex {startIndex} cannot be larger than length {Length}.");
+            }
+
+            if (length < 0)
+            {
+                throw new ArgumentOutOfRangeException($"Length {length} must be non-negative.");
+            }
+        }
+
+        [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
+        [Conditional("UNITY_DOTS_DEBUG")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private readonly void CheckCopyLengths(int srcLength, int dstLength)
+        {
+            if (srcLength != dstLength)
+            {
+                throw new ArgumentException("source and destination length must be the same");
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator Span<T>(UnsafeSpan<T> self)
+        {
+            return new Span<T>(self.Ptr, self.LengthField);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator ReadOnlySpan<T>(UnsafeSpan<T> self)
+        {
+            return new ReadOnlySpan<T>(self.Ptr, self.LengthField);
+        }
+
+        public struct Enumerator : IEnumerator<T>
+        {
+            private readonly T* ptr;
+            private readonly int length;
+            private int index;
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            internal Enumerator(T* ptr, int length)
+            {
+                this.ptr = ptr;
+                this.length = length;
+                index = -1;
+            }
+
+            public readonly void Dispose()
+            {
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public bool MoveNext()
+            {
+                return ++index != length;
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Reset()
+            {
+                index = -1;
+            }
+
+            public readonly T Current
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get => ptr[index];
+            }
+
+            readonly object IEnumerator.Current => Current;
+        }
+    }
+
+    internal sealed unsafe class UnsafeSpanTDebugView<T>
+        where T : unmanaged
+    {
+        private readonly UnsafeSpan<T> data;
+
+        public UnsafeSpanTDebugView(UnsafeSpan<T> data)
+        {
+            this.data = data;
+        }
+
+        public T[] Items => ((ReadOnlySpan<T>)data).ToArray();
+    }
+}
