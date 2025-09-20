@@ -139,14 +139,7 @@ namespace Unity.Collections.LowLevel.Unsafe
         public readonly UnsafeSpan<U> Reinterpret<U>()
             where U : unmanaged
         {
-#if ENABLE_UNITY_COLLECTIONS_CHECKS || UNITY_DOTS_DEBUG
-            if (sizeof(T) != sizeof(U))
-            {
-                // Throws
-                _ = AsNativeArray().Reinterpret<U>();
-            }
-#endif
-
+            CollectionHelper2.CheckReinterpretArgs<T, U>();
             return new UnsafeSpan<U>((U*)Ptr, Length);
         }
 
