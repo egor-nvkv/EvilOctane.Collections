@@ -33,7 +33,7 @@ namespace Unity.Collections.LowLevel.Unsafe
             CollectionHelper.CheckIndexInRange(index, self.Length);
             return ref ((T*)self.GetUnsafeReadOnlyPtr())[index];
         }
-
+        
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static UnsafeSpan<T> AsSpanRW<T>(this NativeArray<T> self)
             where T : unmanaged

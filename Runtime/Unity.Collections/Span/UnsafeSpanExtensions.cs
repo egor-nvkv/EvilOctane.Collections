@@ -21,5 +21,13 @@ namespace Unity.Collections.LowLevel.Unsafe
         {
             return NativeArrayExtensions.Contains<T, U>(self.Ptr, self.Length, value);
         }
+
+        [GenerateTestsForBurstCompatibility(GenericTypeArguments = new[] { typeof(int) })]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int BinarySearch<T>(this UnsafeSpan<T> self, T value)
+            where T : unmanaged, IComparable<T>
+        {
+            return NativeSortExtension.BinarySearch(self.Ptr, self.Length, value);
+        }
     }
 }

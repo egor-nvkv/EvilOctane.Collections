@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using Unity.Burst.CompilerServices;
 using UnityEngine.Assertions;
 using static System.Runtime.CompilerServices.Unsafe;
+using static Unity.Collections.LowLevel.Unsafe.UnsafeUtility2;
 
 namespace Unity.Collections.LowLevel.Unsafe
 {
@@ -14,7 +15,7 @@ namespace Unity.Collections.LowLevel.Unsafe
         {
             if (capacity > self.Capacity)
             {
-                ref UntypedUnsafeListMutable casted = ref As<UnsafeAppendBuffer, UntypedUnsafeListMutable>(ref self);
+                ref UntypedUnsafeListMutable casted = ref Reinterpret<UnsafeAppendBuffer, UntypedUnsafeListMutable>(ref self);
                 MemoryExposed.IncreaseListCapacity_NoInline(ref casted, elementSize: sizeof(byte), elementAlignment: self.Alignment, capacity: capacity);
             }
 

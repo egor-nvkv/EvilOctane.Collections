@@ -1,7 +1,7 @@
 using System.Runtime.CompilerServices;
 using Unity.Burst.CompilerServices;
 using Unity.Collections.LowLevel.Unsafe;
-using BurstRuntime = Unity.Burst.BurstRuntime;
+using static Unity.Collections.LowLevel.Unsafe.UnsafeUtility2;
 
 namespace Unity.Collections
 {
@@ -55,7 +55,7 @@ namespace Unity.Collections
 
                 if (BurstRuntime.GetHashCode64<T>() == BurstRuntime.GetHashCode64<UnsafeText>())
                 {
-                    ref UnsafeText unsafeText = ref UnsafeUtility.As<T, UnsafeText>(ref self);
+                    ref UnsafeText unsafeText = ref Reinterpret<T, UnsafeText>(ref self);
                     ref UnsafeList<byte> unsafeList = ref unsafeText.AsUnsafeList();
 
                     unsafeList.EnsureCapacity(newLength + 1);
@@ -66,7 +66,7 @@ namespace Unity.Collections
                 }
                 else if (BurstRuntime.GetHashCode64<T>() == BurstRuntime.GetHashCode64<NativeText>())
                 {
-                    ref NativeText nativeText = ref UnsafeUtility.As<T, NativeText>(ref self);
+                    ref NativeText nativeText = ref Reinterpret<T, NativeText>(ref self);
                     ref UnsafeList<byte> unsafeList = ref nativeText.GetUnsafeText()->AsUnsafeList();
 
                     unsafeList.EnsureCapacity(newLength + 1);

@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using Unity.Burst.CompilerServices;
 using Unity.Mathematics;
+using static Unity.Collections.LowLevel.Unsafe.UnsafeUtility2;
 using SystemUnsafe = System.Runtime.CompilerServices.Unsafe;
 
 namespace Unity.Collections.LowLevel.Unsafe
@@ -139,7 +140,7 @@ namespace Unity.Collections.LowLevel.Unsafe
         public readonly UnsafeSpan<U> Reinterpret<U>()
             where U : unmanaged
         {
-            CollectionHelper2.CheckReinterpretArgs<T, U>();
+            CheckReinterpretArgs<T, U>();
             return new UnsafeSpan<U>((U*)Ptr, Length);
         }
 
@@ -155,6 +156,13 @@ namespace Unity.Collections.LowLevel.Unsafe
             NativeArray<T> array = CollectionHelper.CreateNativeArray<T>(Length, allocator, NativeArrayOptions.UninitializedMemory);
             array.AsSpanRW().CopyFrom(this);
             return array;
+        }
+
+        [ExcludeFromBurstCompatTesting("Returns managed object")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly T[] ToArray()
+        {
+            return ((ReadOnlySpan<T>)this).ToArray();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -334,6 +342,6 @@ namespace Unity.Collections.LowLevel.Unsafe
             this.data = data;
         }
 
-        public T[] Items => ((ReadOnlySpan<T>)data).ToArray();
+        public T[] Items => data.ToArray();
     }
 }

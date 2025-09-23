@@ -1,6 +1,10 @@
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using Unity.Burst.CompilerServices;
+using Unity.Jobs.LowLevel.Unsafe;
+using Unity.Mathematics;
+using UnityEngine.Assertions;
 using static System.Runtime.CompilerServices.Unsafe;
 
 namespace Unity.Collections.LowLevel.Unsafe
@@ -8,13 +12,38 @@ namespace Unity.Collections.LowLevel.Unsafe
     public readonly unsafe ref struct HashMapHelperRef<TKey>
         where TKey : unmanaged, IEquatable<TKey>
     {
+        // Ideally, this would be a ref field
         internal readonly HashMapHelper<TKey>* ptr;
 
-        public readonly bool IsCreated => ptr != null;
-        public readonly bool IsEmpty => ptr->IsEmpty;
+        public readonly bool IsCreated
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => ptr != null;
+        }
 
-        public readonly int Count => ptr->Count;
-        public readonly int Capacity => ptr->Capacity;
+        public readonly bool IsEmpty
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => ptr->IsEmpty;
+        }
+
+        public readonly int Count
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => ptr->Count;
+        }
+
+        public readonly int Capacity
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => ptr->Capacity;
+        }
+
+        public readonly AllocatorManager.AllocatorHandle Allocator
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => ptr->Allocator;
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private HashMapHelperRef(HashMapHelper<TKey>* ptr)
@@ -51,16 +80,60 @@ namespace Unity.Collections.LowLevel.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public readonly void EnsureCapacity(int capacity)
         {
+            CollectionHelper2.CheckContainerCapacity(capacity);
+
             if (ptr->Capacity < capacity)
             {
-                ptr->Resize(capacity);
+                Hint.Assume(capacity >= ptr->Count);
+                Resize(capacity);
             }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly void EnsureSlack(int slack)
+        {
+            CollectionHelper2.CheckContainerCapacity(slack);
+            EnsureCapacity(ptr->Count + slack);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly void Resize(int newCapacity)
+        {
+            newCapacity = math.max(newCapacity, ptr->Count);
+            int newBucketCapacity = math.ceilpow2(HashMapHelper<TKey>.GetBucketSize(newCapacity));
+
+            if (ptr->Capacity == newCapacity && ptr->BucketCapacity == newBucketCapacity)
+            {
+                return;
+            }
+
+            ResizeExact(newCapacity, newBucketCapacity);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public readonly void Clear()
         {
             ptr->Clear();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly void DisposeMap()
+        {
+            ptr->Dispose();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly void DisposeMap(AllocatorManager.AllocatorHandle allocator)
+        {
+            Assert.AreEqual(ptr->Allocator, allocator);
+
+            Memory.Unmanaged.Free(ptr->Ptr, allocator);
+            ptr->Ptr = null;
+            ptr->Keys = null;
+            ptr->Next = null;
+            ptr->Buckets = null;
+            ptr->Count = 0;
+            ptr->BucketCapacity = 0;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -107,6 +180,41 @@ namespace Unity.Collections.LowLevel.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly int AddUnchecked(TKey key)
+        {
+            if (ptr->AllocatedIndex >= Capacity && ptr->FirstFreeIdx < 0)
+            {
+                int newCap = ptr->CalcCapacityCeilPow2(Capacity + (1 << ptr->Log2MinGrowth));
+                Resize(newCap);
+            }
+
+            // Allocate an entry from the free list
+            int idx = ptr->FirstFreeIdx;
+
+            if (idx >= 0)
+            {
+                ptr->FirstFreeIdx = ptr->Next[idx];
+            }
+            else
+            {
+                idx = ptr->AllocatedIndex++;
+            }
+
+            CheckIndexOutOfBounds(idx);
+
+            UnsafeUtility.WriteArrayElement(ptr->Keys, idx, key);
+            int bucket = GetBucket(key);
+
+            // Add the index to the hashCode-map
+            int* next = ptr->Next;
+            next[idx] = ptr->Buckets[bucket];
+            ptr->Buckets[bucket] = idx;
+            ptr->Count++;
+
+            return idx;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public readonly int AddUncheckedNoResize(TKey key)
         {
             // Allocate an entry from the free list
@@ -136,32 +244,19 @@ namespace Unity.Collections.LowLevel.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly void AddUnchecked<TValue>(TKey key, TValue value)
+            where TValue : unmanaged
+        {
+            int idx = AddUnchecked(key);
+            SetValue(idx, value);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public readonly void AddUncheckedNoResize<TValue>(TKey key, TValue value)
             where TValue : unmanaged
         {
             int idx = AddUncheckedNoResize(key);
             SetValue(idx, value);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly void AddRangeUncheckedNoResize(TKey* keys, int length)
-        {
-            for (int index = 0; index != length; ++index)
-            {
-                _ = AddUncheckedNoResize(keys[index]);
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly void AddRangeUncheckedNoResize(UnsafeList<TKey> keys)
-        {
-            AddRangeUncheckedNoResize(keys.Ptr, keys.Length);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly void AddRangeUncheckedNoResize(NativeArray<TKey> keys)
-        {
-            AddRangeUncheckedNoResize((TKey*)keys.GetUnsafeReadOnlyPtr(), keys.Length);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -210,6 +305,37 @@ namespace Unity.Collections.LowLevel.Unsafe
             return GetBucket(hashCode);
         }
 
+        internal readonly void ResizeExact(int newCapacity, int newBucketCapacity)
+        {
+            int totalSize = HashMapHelper<TKey>.CalculateDataSize(newCapacity, newBucketCapacity, ptr->SizeOfTValue, out int keyOffset, out int nextOffset, out int bucketOffset);
+
+            byte* oldPtr = ptr->Ptr;
+            TKey* oldKeys = ptr->Keys;
+            int* oldNext = ptr->Next;
+            int* oldBuckets = ptr->Buckets;
+            int oldBucketCapacity = ptr->BucketCapacity;
+
+            ptr->Ptr = (byte*)Memory.Unmanaged.Allocate(totalSize, JobsUtility.CacheLineSize, Allocator);
+            ptr->Keys = (TKey*)(ptr->Ptr + keyOffset);
+            ptr->Next = (int*)(ptr->Ptr + nextOffset);
+            ptr->Buckets = (int*)(ptr->Ptr + bucketOffset);
+            ptr->Capacity = newCapacity;
+            ptr->BucketCapacity = newBucketCapacity;
+
+            ptr->Clear();
+
+            for (int i = 0, num = oldBucketCapacity; i < num; ++i)
+            {
+                for (int idx = oldBuckets[i]; idx != -1; idx = oldNext[idx])
+                {
+                    int newIdx = AddUncheckedNoResize(oldKeys[idx]);
+                    UnsafeUtility.MemCpy(ptr->Ptr + (ptr->SizeOfTValue * newIdx), oldPtr + (ptr->SizeOfTValue * idx), ptr->SizeOfTValue);
+                }
+            }
+
+            Memory.Unmanaged.Free(oldPtr, Allocator);
+        }
+
         [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
         [Conditional("UNITY_DOTS_DEBUG")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -234,6 +360,7 @@ namespace Unity.Collections.LowLevel.Unsafe
         }
     }
 
+    [GenerateTestsForBurstCompatibility(GenericTypeArguments = new[] { typeof(FixedString32Bytes) })]
     public static unsafe class HashMapHelperExtensions
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

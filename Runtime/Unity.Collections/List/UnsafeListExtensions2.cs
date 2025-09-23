@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using static Unity.Collections.LowLevel.Unsafe.UnsafeUtility2;
 
 namespace Unity.Collections.LowLevel.Unsafe
 {
@@ -37,14 +38,14 @@ namespace Unity.Collections.LowLevel.Unsafe
         public static void EnsureCapacity<T>(this ref UnsafeList<T> self, int capacity)
             where T : unmanaged
         {
-            MemoryExposed.EnsureListCapacity<T>(ref UnsafeUtility.As<UnsafeList<T>, UntypedUnsafeListMutable>(ref self), capacity);
+            MemoryExposed.EnsureListCapacity<T>(ref Reinterpret<UnsafeList<T>, UntypedUnsafeListMutable>(ref self), capacity);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void EnsureSlack<T>(this ref UnsafeList<T> self, int slack)
             where T : unmanaged
         {
-            MemoryExposed.EnsureListSlack<T>(ref UnsafeUtility.As<UnsafeList<T>, UntypedUnsafeListMutable>(ref self), slack);
+            MemoryExposed.EnsureListSlack<T>(ref Reinterpret<UnsafeList<T>, UntypedUnsafeListMutable>(ref self), slack);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

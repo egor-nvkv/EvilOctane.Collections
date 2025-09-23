@@ -1,6 +1,7 @@
 using System;
 using System.Runtime.CompilerServices;
 using System.Text;
+using static Unity.Collections.LowLevel.Unsafe.UnsafeUtility2;
 
 namespace Unity.Collections.LowLevel.Unsafe
 {
@@ -9,7 +10,7 @@ namespace Unity.Collections.LowLevel.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ref UnsafeList<byte> AsUnsafeList(this ref UnsafeText self)
         {
-            return ref UnsafeUtility.As<UntypedUnsafeList, UnsafeList<byte>>(ref self.m_UntypedListData);
+            return ref Reinterpret<UntypedUnsafeList, UnsafeList<byte>>(ref self.m_UntypedListData);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -20,7 +21,7 @@ namespace Unity.Collections.LowLevel.Unsafe
             list.m_length = 1;
             list.Ptr[0] = 0x0;
 
-            return UnsafeUtility.As<UnsafeList<byte>, UnsafeText>(ref list);
+            return Reinterpret<UnsafeList<byte>, UnsafeText>(ref list);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -34,13 +35,13 @@ namespace Unity.Collections.LowLevel.Unsafe
             list.m_length = byteCount + 1;
             list.Ptr[byteCount] = 0x0;
 
-            return UnsafeUtility.As<UnsafeList<byte>, UnsafeText>(ref list);
+            return Reinterpret<UnsafeList<byte>, UnsafeText>(ref list);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void EnsureCapacity(this ref UnsafeText self, int capacity)
         {
-            MemoryExposed.EnsureListCapacity<byte>(ref UnsafeUtility.As<UnsafeText, UntypedUnsafeListMutable>(ref self), capacity + 1);
+            MemoryExposed.EnsureListCapacity<byte>(ref Reinterpret<UnsafeText, UntypedUnsafeListMutable>(ref self), capacity + 1);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
