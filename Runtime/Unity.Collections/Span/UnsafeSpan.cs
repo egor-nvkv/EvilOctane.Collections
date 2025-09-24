@@ -332,7 +332,7 @@ namespace Unity.Collections.LowLevel.Unsafe
         }
     }
 
-    internal sealed unsafe class UnsafeSpanTDebugView<T>
+    internal sealed class UnsafeSpanTDebugView<T>
         where T : unmanaged
     {
         private readonly UnsafeSpan<T> data;

@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.10.1] - 2025-09-25
+
+Fixed capacity checks
+
 ## [0.10.0] - 2025-09-24
 
 Collection utility updates

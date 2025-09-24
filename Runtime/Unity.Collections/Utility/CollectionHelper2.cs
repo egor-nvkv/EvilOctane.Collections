@@ -13,9 +13,9 @@ namespace Unity.Collections
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void CheckContainerCapacity(int capacity)
         {
-            if (Hint.Unlikely(capacity <= 0))
+            if (Hint.Unlikely(capacity < 0))
             {
-                throw new ArgumentException("Capacity must be greater than zero.");
+                throw new ArgumentException("Capacity cannot be negative.");
             }
         }
     }
