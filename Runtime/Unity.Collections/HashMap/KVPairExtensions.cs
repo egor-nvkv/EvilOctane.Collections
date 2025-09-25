@@ -29,5 +29,21 @@ namespace Unity.Collections.LowLevel.Unsafe
 
             return ref self.m_Data->Keys[self.m_Index];
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ref TValue GetValueRefChecked<TKey, TValue>(this KVPair<TKey, TValue> self)
+            where TKey : unmanaged, IEquatable<TKey>
+            where TValue : unmanaged
+        {
+#if ENABLE_UNITY_COLLECTIONS_CHECKS || UNITY_DOTS_DEBUG
+            if (self.m_Index == -1)
+            {
+                throw new ArgumentException("must be valid");
+            }
+#endif
+
+            UnsafeUtility2.CheckIsAligned<TValue>(self.m_Data->Ptr);
+            return ref UnsafeUtility.ArrayElementAsRef<TValue>(self.m_Data->Ptr, self.m_Index);
+        }
     }
 }

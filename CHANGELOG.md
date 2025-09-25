@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.10.2] - 2025-09-25
+
+HashMap utility updates
+
 ## [0.10.1] - 2025-09-25
 
 Fixed capacity checks

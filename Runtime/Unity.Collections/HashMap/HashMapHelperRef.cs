@@ -180,6 +180,26 @@ namespace Unity.Collections.LowLevel.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly ref TValue GetValueRef<TValue>(int idx)
+            where TValue : unmanaged
+        {
+            CheckValueSize<TValue>();
+            UnsafeUtility2.CheckIsAligned<TValue>(ptr->Ptr);
+            CollectionHelper.CheckIndexInRange(idx, ptr->Capacity);
+            return ref UnsafeUtility.ArrayElementAsRef<TValue>(ptr->Ptr, idx);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly ref TValue TryGetValueRef<TValue>(TKey key, out bool exists)
+            where TValue : unmanaged
+        {
+            int idx = Find(key);
+
+            exists = idx >= 0;
+            return ref exists ? ref GetValueRef<TValue>(idx) : ref NullRef<TValue>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public readonly int AddUnchecked(TKey key)
         {
             if (ptr->AllocatedIndex >= Capacity && ptr->FirstFreeIdx < 0)
@@ -260,24 +280,79 @@ namespace Unity.Collections.LowLevel.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly int TryAddNoResize(TKey key)
+        public readonly int TryAdd(TKey key, out bool added)
         {
-            return ContainsKey(key) ? -1 : AddUncheckedNoResize(key);
+            int idx = Find(key);
+
+            if (idx >= 0)
+            {
+                added = false;
+                return idx;
+            }
+
+            added = true;
+            return AddUnchecked(key);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly bool TryAddNoResize<TValue>(TKey key, TValue value)
+        public readonly bool TryAdd<TValue>(TKey key, TValue value)
             where TValue : unmanaged
         {
-            int idx = TryAddNoResize(key);
+            int idx = TryAdd(key, out bool added);
 
-            if (idx >= 0)
+            if (added)
             {
                 SetValue(idx, value);
                 return true;
             }
 
             return false;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly int TryAddNoResize(TKey key, out bool added)
+        {
+            int idx = Find(key);
+
+            if (idx >= 0)
+            {
+                added = false;
+                return idx;
+            }
+
+            added = true;
+            return AddUncheckedNoResize(key);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly bool TryAddNoResize<TValue>(TKey key, TValue value)
+            where TValue : unmanaged
+        {
+            int idx = TryAddNoResize(key, out bool added);
+
+            if (added)
+            {
+                SetValue(idx, value);
+                return true;
+            }
+
+            return false;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly ref TValue GetOrAddValue<TValue>(TKey key, out bool added)
+            where TValue : unmanaged
+        {
+            int idx = TryAdd(key, out added);
+            return ref GetValueRef<TValue>(idx);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly ref TValue GetOrAddValueNoResize<TValue>(TKey key, out bool added)
+            where TValue : unmanaged
+        {
+            int idx = TryAddNoResize(key, out added);
+            return ref GetValueRef<TValue>(idx);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using Unity.Burst.CompilerServices;
 using static System.Runtime.CompilerServices.Unsafe;
 
 namespace Unity.Collections.LowLevel.Unsafe
@@ -39,6 +40,20 @@ namespace Unity.Collections.LowLevel.Unsafe
             if (alignDestination > alignSource)
             {
                 throw new InvalidOperationException($"Cannot reinterpret to over-aligned type: source = {alignSource}, destination = {alignDestination}.");
+            }
+        }
+
+        [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
+        [Conditional("UNITY_DOTS_DEBUG")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void CheckIsAligned<T>(void* ptr)
+            where T : unmanaged
+        {
+            int align = UnsafeUtility.AlignOf<T>();
+
+            if (Hint.Unlikely(!CollectionHelper.IsAligned(ptr, align)))
+            {
+                throw new InvalidOperationException("Pointer does not have required alignment.");
             }
         }
     }
