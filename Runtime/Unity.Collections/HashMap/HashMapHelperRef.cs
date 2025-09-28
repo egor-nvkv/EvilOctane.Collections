@@ -362,6 +362,21 @@ namespace Unity.Collections.LowLevel.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly UnsafeSpan<TKey> GetKeySpanRO()
+        {
+            return new UnsafeSpan<TKey>(ptr->Keys, ptr->Capacity);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly UnsafeSpan<TValue> GetValueSpan<TValue>()
+            where TValue : unmanaged
+        {
+            CheckValueSize<TValue>();
+            UnsafeUtility2.CheckIsAligned<TValue>(ptr->Ptr);
+            return new UnsafeSpan<TValue>((TValue*)ptr->Ptr, ptr->Capacity);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public readonly NativeArray<TKey> GetKeyArray(AllocatorManager.AllocatorHandle allocator)
         {
             return ptr->GetKeyArray(allocator);

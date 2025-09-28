@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.10.3] - 2025-09-29
+
+InlineList / HashMap added
+
 ## [0.10.2] - 2025-09-25
 
 HashMap utility updates

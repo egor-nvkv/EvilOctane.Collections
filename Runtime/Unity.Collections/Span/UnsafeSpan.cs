@@ -147,7 +147,7 @@ namespace Unity.Collections.LowLevel.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public readonly NativeArray<T> AsNativeArray()
         {
-            return NativeArrayUnsafeUtility.ConvertExistingDataToNativeArray<T>(Ptr, Length, Allocator.None);
+            return CollectionHelper.ConvertExistingDataToNativeArray<T>(Ptr, Length, Allocator.None, true);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -156,6 +156,12 @@ namespace Unity.Collections.LowLevel.Unsafe
             NativeArray<T> array = CollectionHelper.CreateNativeArray<T>(Length, allocator, NativeArrayOptions.UninitializedMemory);
             array.AsSpanRW().CopyFrom(this);
             return array;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly ByteSpan AsByteSpan()
+        {
+            return new ByteSpan((byte*)Ptr, Length * sizeof(T));
         }
 
         [ExcludeFromBurstCompatTesting("Returns managed object")]

@@ -1,10 +1,10 @@
-using System;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using Unity.Burst.CompilerServices;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
 using UnityEngine.Assertions;
+using static Unity.Collections.CollectionHelper;
+using static Unity.Collections.CollectionHelper2;
 
 namespace Unity.Collections
 {
@@ -13,16 +13,16 @@ namespace Unity.Collections
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void* AllocateList_Inline(int elementSize, int elementAlignment, int capacity, AllocatorManager.AllocatorHandle allocator, out int actualCapacity)
         {
-            CheckElementSize(elementSize);
-            CollectionHelper.CheckIntPositivePowerOfTwo(elementAlignment);
+            CheckContainerElementSize(elementSize);
+            CheckIntPositivePowerOfTwo(elementAlignment);
 
-            CollectionHelper2.CheckContainerCapacity(capacity);
-            CollectionHelper.CheckAllocator(allocator);
+            CheckContainerCapacity(capacity);
+            CheckAllocator(allocator);
 
             Hint.Assume(elementSize >= 1);
             int elementSizeLog2 = math.ceillog2(elementSize);
 
-            actualCapacity = math.max(capacity, CollectionHelper.CacheLineSize >> elementSizeLog2);
+            actualCapacity = math.max(capacity, CacheLineSize >> elementSizeLog2);
             actualCapacity = math.ceilpow2(actualCapacity);
 
             return Memory.Unmanaged.Allocate(size: actualCapacity * elementSize, align: elementAlignment, allocator);
@@ -54,11 +54,11 @@ namespace Unity.Collections
             Assert.IsTrue(list.Ptr != null);
             Assert.IsTrue(capacity > list.m_capacity);
 
-            CheckElementSize(elementSize);
-            CollectionHelper.CheckIntPositivePowerOfTwo(elementAlignment);
+            CheckContainerElementSize(elementSize);
+            CheckIntPositivePowerOfTwo(elementAlignment);
 
-            CollectionHelper.CheckCapacityInRange(capacity, list.m_length);
-            CollectionHelper.CheckAllocator(list.Allocator);
+            CheckCapacityInRange(capacity, list.m_length);
+            CheckAllocator(list.Allocator);
 
             int capacityCeilpow2 = math.ceilpow2(capacity);
 
@@ -75,7 +75,7 @@ namespace Unity.Collections
         public static void EnsureListCapacity<T>(ref UntypedUnsafeListMutable list, int capacity)
             where T : unmanaged
         {
-            CollectionHelper2.CheckContainerCapacity(capacity);
+            CheckContainerCapacity(capacity);
 
             if (capacity > list.m_capacity)
             {
@@ -90,19 +90,8 @@ namespace Unity.Collections
         public static void EnsureListSlack<T>(ref UntypedUnsafeListMutable list, int slack)
             where T : unmanaged
         {
-            CollectionHelper2.CheckContainerCapacity(slack);
+            CheckContainerCapacity(slack);
             EnsureListCapacity<T>(ref list, list.m_length + slack);
-        }
-
-        [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
-        [Conditional("UNITY_DOTS_DEBUG")]
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void CheckElementSize(int elementSize)
-        {
-            if (Hint.Unlikely(elementSize <= 0))
-            {
-                throw new ArgumentException("Element size must be greater than zero.");
-            }
         }
 
         public struct Unmanaged

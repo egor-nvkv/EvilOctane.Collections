@@ -49,9 +49,17 @@ namespace Unity.Collections.LowLevel.Unsafe
         public static void CheckIsAligned<T>(void* ptr)
             where T : unmanaged
         {
-            int align = UnsafeUtility.AlignOf<T>();
+            CheckIsAligned(ptr, UnsafeUtility.AlignOf<T>());
+        }
 
-            if (Hint.Unlikely(!CollectionHelper.IsAligned(ptr, align)))
+        [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
+        [Conditional("UNITY_DOTS_DEBUG")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void CheckIsAligned(void* ptr, int alignment)
+        {
+            CollectionHelper.CheckIntPositivePowerOfTwo(alignment);
+
+            if (Hint.Unlikely(!CollectionHelper.IsAligned(ptr, alignment)))
             {
                 throw new InvalidOperationException("Pointer does not have required alignment.");
             }
