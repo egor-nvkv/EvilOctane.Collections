@@ -25,7 +25,11 @@ namespace Unity.Collections
             actualCapacity = math.max(capacity, CacheLineSize >> elementSizeLog2);
             actualCapacity = math.ceilpow2(actualCapacity);
 
-            return Memory.Unmanaged.Allocate(size: actualCapacity * elementSize, align: elementAlignment, allocator);
+            void* ptr = Memory.Unmanaged.Allocate(size: actualCapacity * elementSize, align: elementAlignment, allocator);
+
+            Hint.Assume(ptr != null);
+            Hint.Assume(actualCapacity >= capacity);
+            return ptr;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -80,10 +84,10 @@ namespace Unity.Collections
             if (capacity > list.m_capacity)
             {
                 IncreaseListCapacity_NoInline(ref list, elementSize: sizeof(T), elementAlignment: UnsafeUtility.AlignOf<T>(), capacity: capacity);
-            }
 
-            Assert.IsTrue(list.m_capacity >= capacity);
-            Hint.Assume(list.m_capacity >= capacity);
+                Hint.Assume(list.Ptr != null);
+                Hint.Assume(list.m_capacity >= capacity);
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

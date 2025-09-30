@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.10.4] - 2025-10-01
+
+UnsafeUtility improvements
+
 ## [0.10.3] - 2025-09-29
 
 InlineList / HashMap added

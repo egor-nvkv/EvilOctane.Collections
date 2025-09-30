@@ -49,6 +49,13 @@ namespace Unity.Collections.LowLevel.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void AddRange<T>(this ref UnsafeList<T> self, UnsafeSpan<T> valueSpan)
+            where T : unmanaged
+        {
+            self.AddRange(valueSpan.Ptr, valueSpan.Length);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void AddRangeNoResize<T>(this ref UnsafeList<T> self, UnsafeSpan<T> valueSpan)
             where T : unmanaged
         {

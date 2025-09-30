@@ -12,7 +12,7 @@ namespace Unity.Collections.LowLevel.Unsafe
         private int state;
 
         /// <summary>
-        /// Continually spin until the lock can be acquired.
+        /// <inheritdoc cref="Collections.Spinner.Acquire"/>
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Acquire()
@@ -34,9 +34,9 @@ namespace Unity.Collections.LowLevel.Unsafe
         }
 
         /// <summary>
-        /// Try to acquire the lock and immediately return without spinning.
+        /// <inheritdoc cref="Collections.Spinner.TryAcquire()"/>
         /// </summary>
-        /// <returns><see langword="true"/> if the lock was acquired, <see langword="false"/> otherwise.</returns>
+        /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryAcquire()
         {
@@ -46,10 +46,10 @@ namespace Unity.Collections.LowLevel.Unsafe
         }
 
         /// <summary>
-        /// Try to acquire the lock, and spin only if <paramref name="spin"/> is <see langword="true"/>.
+        /// <inheritdoc cref="Collections.Spinner.TryAcquire(bool)"/>
         /// </summary>
-        /// <param name="spin">Set to true to spin the lock.</param>
-        /// <returns><see langword="true"/> if the lock was acquired, <see langword="false" otherwise./></returns>
+        /// <param name="spin"></param>
+        /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryAcquire(bool spin)
         {
@@ -63,7 +63,7 @@ namespace Unity.Collections.LowLevel.Unsafe
         }
 
         /// <summary>
-        /// Release the lock
+        /// <inheritdoc cref="Collections.Spinner.Release"/>
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Release()

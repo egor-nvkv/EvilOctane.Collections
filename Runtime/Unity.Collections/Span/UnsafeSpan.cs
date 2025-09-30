@@ -206,6 +206,15 @@ namespace Unity.Collections.LowLevel.Unsafe
                     SystemUnsafe.InitBlock(Ptr, *(byte*)&value, (uint)Length);
                 }
             }
+            else if (((32 % sizeof(T)) == 0) || ((sizeof(T) % 32) == 0))
+            {
+                // Vectorizable
+
+                for (int index = 0; index != Length; ++index)
+                {
+                    Ptr[index] = value;
+                }
+            }
             else
             {
                 // Generic

@@ -9,6 +9,15 @@ namespace Unity.Collections.LowLevel.Unsafe
     [GenerateTestsForBurstCompatibility]
     public static unsafe partial class UnsafeUtility2
     {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool CanBeReinterpretedExactly<TSource, TDestination>()
+            where TSource : unmanaged
+            where TDestination : unmanaged
+        {
+            return sizeof(TSource) == sizeof(TDestination) &&
+                UnsafeUtility.AlignOf<TSource>() == UnsafeUtility.AlignOf<TDestination>();
+        }
+
         [GenerateTestsForBurstCompatibility(GenericTypeArguments = new[] { typeof(int), typeof(float) })]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ref TDestination Reinterpret<TSource, TDestination>(ref TSource source)
@@ -22,24 +31,40 @@ namespace Unity.Collections.LowLevel.Unsafe
         [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
         [Conditional("UNITY_DOTS_DEBUG")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void CheckReinterpretArgs<TSource, TDestination>()
+        public static void CheckReinterpretArgs<TSource, TDestination>(bool requireExactAlignment = false)
             where TSource : unmanaged
             where TDestination : unmanaged
         {
-            int sizeSource = sizeof(TSource);
-            int sizeDestination = sizeof(TDestination);
-
-            if (sizeSource != sizeDestination)
+            // Size
             {
-                throw new InvalidOperationException($"Cannot reinterpret between types of different sizes: source = {sizeSource}, destination = {sizeDestination}.");
+                int sizeSource = sizeof(TSource);
+                int sizeDestination = sizeof(TDestination);
+
+                if (sizeSource != sizeDestination)
+                {
+                    throw new InvalidOperationException($"Cannot reinterpret between types of different sizes: source = {sizeSource}, destination = {sizeDestination}.");
+                }
             }
 
-            int alignSource = UnsafeUtility.AlignOf<TSource>();
-            int alignDestination = UnsafeUtility.AlignOf<TDestination>();
-
-            if (alignDestination > alignSource)
+            // Alignment
             {
-                throw new InvalidOperationException($"Cannot reinterpret to over-aligned type: source = {alignSource}, destination = {alignDestination}.");
+                int alignSource = UnsafeUtility.AlignOf<TSource>();
+                int alignDestination = UnsafeUtility.AlignOf<TDestination>();
+
+                if (requireExactAlignment)
+                {
+                    if (alignSource != alignDestination)
+                    {
+                        throw new InvalidOperationException($"Cannot reinterpret between types of different alignments: source = {alignSource}, destination = {alignDestination}.");
+                    }
+                }
+                else
+                {
+                    if (alignDestination > alignSource)
+                    {
+                        throw new InvalidOperationException($"Cannot reinterpret to over-aligned type: source = {alignSource}, destination = {alignDestination}.");
+                    }
+                }
             }
         }
 
