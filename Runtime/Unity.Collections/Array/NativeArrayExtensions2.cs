@@ -1,9 +1,12 @@
 using System.Runtime.CompilerServices;
+using UnityEngine;
+using static Unity.Collections.CollectionHelper;
 
 namespace Unity.Collections.LowLevel.Unsafe
 {
     public static unsafe class NativeArrayExtensions2
     {
+        [HideInCallstack]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T* GetPtr<T>(this NativeArray<T> self)
             where T : unmanaged
@@ -11,6 +14,7 @@ namespace Unity.Collections.LowLevel.Unsafe
             return (T*)self.GetUnsafePtr();
         }
 
+        [HideInCallstack]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T* GetReadOnlyPtr<T>(this NativeArray<T> self)
             where T : unmanaged
@@ -22,7 +26,7 @@ namespace Unity.Collections.LowLevel.Unsafe
         public static ref T ElementAt<T>(this NativeArray<T> self, int index)
             where T : unmanaged
         {
-            CollectionHelper.CheckIndexInRange(index, self.Length);
+            CheckIndexInRange(index, self.Length);
             return ref ((T*)self.GetUnsafePtr())[index];
         }
 
@@ -30,10 +34,10 @@ namespace Unity.Collections.LowLevel.Unsafe
         public static ref T ElementAtReadonly<T>(this NativeArray<T> self, int index)
             where T : unmanaged
         {
-            CollectionHelper.CheckIndexInRange(index, self.Length);
+            CheckIndexInRange(index, self.Length);
             return ref ((T*)self.GetUnsafeReadOnlyPtr())[index];
         }
-        
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static UnsafeSpan<T> AsSpanRW<T>(this NativeArray<T> self)
             where T : unmanaged

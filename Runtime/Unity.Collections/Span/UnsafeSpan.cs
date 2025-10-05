@@ -13,6 +13,7 @@ namespace Unity.Collections.LowLevel.Unsafe
     /// <summary>
     /// Unmanaged version of <see cref="Span{T}"/>.
     /// </summary>
+    [DebuggerDisplay("Length = {Length}")]
     [DebuggerTypeProxy(typeof(UnsafeSpanTDebugView<>))]
     [GenerateTestsForBurstCompatibility(GenericTypeArguments = new[] { typeof(int) })]
     public readonly unsafe struct UnsafeSpan<T> : INativeList<T>, IEnumerable<T>

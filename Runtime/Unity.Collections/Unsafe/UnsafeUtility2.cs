@@ -9,6 +9,7 @@ namespace Unity.Collections.LowLevel.Unsafe
     [GenerateTestsForBurstCompatibility]
     public static unsafe partial class UnsafeUtility2
     {
+        [GenerateTestsForBurstCompatibility(GenericTypeArguments = new[] { typeof(int), typeof(float) })]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool CanBeReinterpretedExactly<TSource, TDestination>()
             where TSource : unmanaged

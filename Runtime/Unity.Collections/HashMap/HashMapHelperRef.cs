@@ -78,14 +78,14 @@ namespace Unity.Collections.LowLevel.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly void EnsureCapacity(int capacity)
+        public readonly void EnsureCapacity(int capacity, bool keepOldData = true)
         {
             CollectionHelper2.CheckContainerCapacity(capacity);
 
             if (ptr->Capacity < capacity)
             {
                 Hint.Assume(capacity >= ptr->Count);
-                Resize(capacity);
+                Resize(capacity, keepOldData);
             }
         }
 
@@ -97,7 +97,7 @@ namespace Unity.Collections.LowLevel.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly void Resize(int newCapacity)
+        public readonly void Resize(int newCapacity, bool keepOldData = true)
         {
             newCapacity = math.max(newCapacity, ptr->Count);
             int newBucketCapacity = math.ceilpow2(HashMapHelper<TKey>.GetBucketSize(newCapacity));
@@ -107,7 +107,14 @@ namespace Unity.Collections.LowLevel.Unsafe
                 return;
             }
 
-            ResizeExact(newCapacity, newBucketCapacity);
+            if (keepOldData)
+            {
+                ResizeExactKeepOldData(newCapacity, newBucketCapacity);
+            }
+            else
+            {
+                ResizeExactTrashOldData(newCapacity, newBucketCapacity);
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -395,7 +402,18 @@ namespace Unity.Collections.LowLevel.Unsafe
             return GetBucket(hashCode);
         }
 
-        internal readonly void ResizeExact(int newCapacity, int newBucketCapacity)
+        internal readonly void ResizeExactKeepOldData(int newCapacity, int newBucketCapacity)
+        {
+            ResizeExact(newCapacity, newBucketCapacity, keepOldData: true);
+        }
+
+        internal readonly void ResizeExactTrashOldData(int newCapacity, int newBucketCapacity)
+        {
+            ResizeExact(newCapacity, newBucketCapacity, keepOldData: false);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal readonly void ResizeExact(int newCapacity, int newBucketCapacity, bool keepOldData)
         {
             int totalSize = HashMapHelper<TKey>.CalculateDataSize(newCapacity, newBucketCapacity, ptr->SizeOfTValue, out int keyOffset, out int nextOffset, out int bucketOffset);
 
@@ -414,12 +432,15 @@ namespace Unity.Collections.LowLevel.Unsafe
 
             ptr->Clear();
 
-            for (int i = 0, num = oldBucketCapacity; i < num; ++i)
+            if (keepOldData)
             {
-                for (int idx = oldBuckets[i]; idx != -1; idx = oldNext[idx])
+                for (int i = 0, num = oldBucketCapacity; i < num; ++i)
                 {
-                    int newIdx = AddUncheckedNoResize(oldKeys[idx]);
-                    UnsafeUtility.MemCpy(ptr->Ptr + (ptr->SizeOfTValue * newIdx), oldPtr + (ptr->SizeOfTValue * idx), ptr->SizeOfTValue);
+                    for (int idx = oldBuckets[i]; idx != -1; idx = oldNext[idx])
+                    {
+                        int newIdx = AddUncheckedNoResize(oldKeys[idx]);
+                        UnsafeUtility.MemCpy(ptr->Ptr + (ptr->SizeOfTValue * newIdx), oldPtr + (ptr->SizeOfTValue * idx), ptr->SizeOfTValue);
+                    }
                 }
             }
 

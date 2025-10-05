@@ -29,7 +29,7 @@ namespace Unity.Collections.LowLevel.Unsafe
             CheckContainerCapacity(capacity);
 
             nint elementOffset = Align(sizeof(InlineListHeader<T>), (nint)AlignOf<T>());
-            return elementOffset + (sizeof(T) * capacity);
+            return elementOffset + (capacity * sizeof(T));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

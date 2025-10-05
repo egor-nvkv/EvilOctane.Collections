@@ -8,7 +8,7 @@ namespace Unity.Collections.LowLevel.Unsafe
         public static UnsafeList<T> Create<T>(int capacity, AllocatorManager.AllocatorHandle allocator)
             where T : unmanaged
         {
-            T* ptr = MemoryExposed.AllocateList_Inline<T>(capacity, allocator, out int actualCapacity);
+            T* ptr = MemoryExposed.AllocateList<T>(capacity, allocator, out int actualCapacity);
 
             return new UnsafeList<T>()
             {
@@ -20,25 +20,10 @@ namespace Unity.Collections.LowLevel.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static UnsafeList<T> Create_NoInline<T>(int capacity, AllocatorManager.AllocatorHandle allocator)
+        public static void EnsureCapacity<T>(this ref UnsafeList<T> self, int capacity, bool keepOldData = true)
             where T : unmanaged
         {
-            T* ptr = MemoryExposed.AllocateList_NoInline<T>(capacity, allocator, out int actualCapacity);
-
-            return new UnsafeList<T>()
-            {
-                Ptr = ptr,
-                m_length = 0,
-                m_capacity = actualCapacity,
-                Allocator = allocator
-            };
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void EnsureCapacity<T>(this ref UnsafeList<T> self, int capacity)
-            where T : unmanaged
-        {
-            MemoryExposed.EnsureListCapacity<T>(ref Reinterpret<UnsafeList<T>, UntypedUnsafeListMutable>(ref self), capacity);
+            MemoryExposed.EnsureListCapacity<T>(ref Reinterpret<UnsafeList<T>, UntypedUnsafeListMutable>(ref self), capacity, keepOldData);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

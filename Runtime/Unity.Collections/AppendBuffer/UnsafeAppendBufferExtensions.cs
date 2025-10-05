@@ -1,9 +1,7 @@
-using System;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using Unity.Burst.CompilerServices;
-using UnityEngine.Assertions;
 using static System.Runtime.CompilerServices.Unsafe;
+using static Unity.Collections.CollectionHelper;
+using static Unity.Collections.CollectionHelper2;
 using static Unity.Collections.LowLevel.Unsafe.UnsafeUtility2;
 
 namespace Unity.Collections.LowLevel.Unsafe
@@ -11,16 +9,21 @@ namespace Unity.Collections.LowLevel.Unsafe
     public static unsafe class UnsafeAppendBufferExtensions
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void EnsureCapacity(this ref UnsafeAppendBuffer self, int capacity)
+        public static void EnsureCapacity(this ref UnsafeAppendBuffer self, int capacity, bool keepOldData = true)
         {
             if (capacity > self.Capacity)
             {
                 ref UntypedUnsafeListMutable casted = ref Reinterpret<UnsafeAppendBuffer, UntypedUnsafeListMutable>(ref self);
-                MemoryExposed.IncreaseListCapacity_NoInline(ref casted, elementSize: sizeof(byte), elementAlignment: self.Alignment, capacity: capacity);
-            }
 
-            Assert.IsTrue(self.Capacity >= capacity);
-            Hint.Assume(self.Capacity >= capacity);
+                if (keepOldData)
+                {
+                    MemoryExposed.IncreaseListCapacityKeepOldData(ref casted, elementSize: sizeof(byte), elementAlignment: self.Alignment, capacity: capacity);
+                }
+                else
+                {
+                    MemoryExposed.IncreaseListCapacityTrashOldData(ref casted, elementSize: sizeof(byte), elementAlignment: self.Alignment, capacity: capacity);
+                }
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -33,13 +36,12 @@ namespace Unity.Collections.LowLevel.Unsafe
         public static void AddNoResize<T>(this ref UnsafeAppendBuffer self, T value)
             where T : unmanaged
         {
+            CheckAddNoResizeHasEnoughCapacity(self.Length, self.Capacity, sizeof(T));
+
             int oldLength = self.Length;
-            int newLength = oldLength + sizeof(T);
+            self.Length = oldLength + sizeof(T);
 
-            CheckCreatedAndHasEnoughCapacity(self, newLength);
-
-            self.Length = newLength;
-            Override(self, oldLength, value);
+            Overwrite(self, oldLength, value);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -47,25 +49,24 @@ namespace Unity.Collections.LowLevel.Unsafe
             where T0 : unmanaged
             where T1 : unmanaged
         {
+            CheckAddNoResizeHasEnoughCapacity(self.Length, self.Capacity, sizeof(T0) + sizeof(T1));
+
             int oldLength = self.Length;
-            int newLength = oldLength + sizeof(T0) + sizeof(T1);
+            self.Length = oldLength + sizeof(T0) + sizeof(T1);
 
-            CheckCreatedAndHasEnoughCapacity(self, newLength);
-
-            self.Length = newLength;
-            Override(self, oldLength, value0);
-            Override(self, oldLength + sizeof(T0), value1);
+            Overwrite(self, oldLength, value0);
+            Overwrite(self, oldLength + sizeof(T0), value1);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void Override<T>(this UnsafeAppendBuffer self, int offset, T value)
+        public static void Overwrite<T>(this UnsafeAppendBuffer self, int offset, T value)
             where T : unmanaged
         {
-            CheckCreatedAndHasEnoughCapacity(self, offset + sizeof(T));
-            CollectionHelper.CheckIndexInRange(offset + sizeof(T) - 1, self.Length);
+            CheckContainerElementCount(offset);
+            CheckIndexInRange(offset + sizeof(T) - 1, self.Length);
 
             byte* destination = self.Ptr + offset;
-            UnsafeUtility.MemCpy(destination, &value, sizeof(T));
+            WriteUnaligned(destination, value);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -87,33 +88,19 @@ namespace Unity.Collections.LowLevel.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void Skip(this ref UnsafeAppendBuffer.Reader self, int byteCount)
         {
-            CheckBounds(self.Offset, self.Size, byteCount);
+            CheckContainerElementCount(byteCount);
+            CheckIndexInRange(self.Offset + byteCount - 1, self.Size);
             self.Offset += byteCount;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void Backup<T>(this ref UnsafeAppendBuffer.Reader self)
-            where T : unmanaged
-        {
-            Backup(ref self, sizeof(T));
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void Backup(this ref UnsafeAppendBuffer.Reader self, int byteCount)
-        {
-            CheckBounds(self.Offset, self.Size, -byteCount);
-            self.Offset -= byteCount;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T ReadNextFast<T>(this ref UnsafeAppendBuffer.Reader self)
             where T : unmanaged
         {
-            CheckBounds(self.Offset, self.Size, sizeof(T));
+            CheckIndexInRange(self.Offset + sizeof(T) - 1, self.Size);
 
-            T value;
             void* ptr = self.Ptr + self.Offset;
-            UnsafeUtility.MemCpy(&value, ptr, sizeof(T));
+            T value = ReadUnaligned<T>(ptr);
 
             self.Offset += sizeof(T);
             return value;
@@ -150,49 +137,19 @@ namespace Unity.Collections.LowLevel.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void AddNoResize(ref UnsafeAppendBuffer unsafeAppendBuffer, void* ptr, int size)
         {
+            CheckAddNoResizeHasEnoughCapacity(unsafeAppendBuffer.Length, unsafeAppendBuffer.Capacity, size);
+
             int oldLength = unsafeAppendBuffer.Length;
-            int newLength = oldLength + size;
+            unsafeAppendBuffer.Length = oldLength + size;
 
-            CheckCreatedAndHasEnoughCapacity(unsafeAppendBuffer, newLength);
-
-            unsafeAppendBuffer.Length = newLength;
-            Override(unsafeAppendBuffer, oldLength, ptr, size);
+            Overwrite(unsafeAppendBuffer, oldLength, ptr, size);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void Override(UnsafeAppendBuffer unsafeAppendBuffer, int offset, void* ptr, int size)
+        private static void Overwrite(UnsafeAppendBuffer unsafeAppendBuffer, int offset, void* ptr, int size)
         {
-            CollectionHelper.CheckIndexInRange(offset + size - 1, unsafeAppendBuffer.Length);
+            CheckIndexInRange(offset + size - 1, unsafeAppendBuffer.Length);
             UnsafeUtility.MemCpy(unsafeAppendBuffer.Ptr + offset, ptr, size);
-        }
-
-        [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
-        [Conditional("UNITY_DOTS_DEBUG")]
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void CheckCreatedAndHasEnoughCapacity(UnsafeAppendBuffer buffer, int length)
-        {
-            if (!buffer.IsCreated)
-            {
-                throw new InvalidOperationException("UnsafeAppendBuffer is not created.");
-            }
-
-            int capacity = buffer.Capacity;
-
-            if (capacity < length)
-            {
-                throw new InvalidOperationException($"UnsafeAppendBuffer does not have enough capacity. Requested: {length}, available: {capacity}.");
-            }
-        }
-
-        [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
-        [Conditional("UNITY_DOTS_DEBUG")]
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void CheckBounds(int offset, int size, int byteCount)
-        {
-            if (offset + byteCount > size)
-            {
-                throw new ArgumentException($"Requested value outside bounds of UnsafeAppendOnlyBuffer. Remaining bytes: {size - offset} Requested: {byteCount}");
-            }
         }
     }
 }

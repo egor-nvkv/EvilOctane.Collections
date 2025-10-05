@@ -4,7 +4,7 @@ using System.Threading;
 namespace Unity.Collections.LowLevel.Unsafe
 {
     /// <summary>
-    /// Based on <seealso cref="Collections.Spinner"/>.
+    /// Copy of <seealso cref="Collections.Spinner"/>.
     /// </summary>
     [GenerateTestsForBurstCompatibility]
     public struct Spinner

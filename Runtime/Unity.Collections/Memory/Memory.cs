@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using Unity.Burst.CompilerServices;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
+using UnityEngine;
 using UnityEngine.Assertions;
 using static Unity.Collections.CollectionHelper;
 using static Unity.Collections.CollectionHelper2;
@@ -10,8 +11,7 @@ namespace Unity.Collections
 {
     public unsafe struct MemoryExposed
     {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void* AllocateList_Inline(int elementSize, int elementAlignment, int capacity, AllocatorManager.AllocatorHandle allocator, out int actualCapacity)
+        public static void* AllocateList(int elementSize, int elementAlignment, int capacity, AllocatorManager.AllocatorHandle allocator, out int actualCapacity)
         {
             CheckContainerElementSize(elementSize);
             CheckIntPositivePowerOfTwo(elementAlignment);
@@ -33,57 +33,28 @@ namespace Unity.Collections
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static T* AllocateList_Inline<T>(int capacity, AllocatorManager.AllocatorHandle allocator, out int actualCapacity)
+        public static T* AllocateList<T>(int capacity, AllocatorManager.AllocatorHandle allocator, out int actualCapacity)
             where T : unmanaged
         {
-            return (T*)AllocateList_Inline(sizeof(T), UnsafeUtility.AlignOf<T>(), capacity, allocator, out actualCapacity);
-        }
-
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        public static void* AllocateList_NoInline(int elementSize, int elementAlignment, int capacity, AllocatorManager.AllocatorHandle allocator, out int actualCapacity)
-        {
-            return AllocateList_Inline(elementSize, elementAlignment, capacity, allocator, out actualCapacity);
+            return (T*)AllocateList(sizeof(T), UnsafeUtility.AlignOf<T>(), capacity, allocator, out actualCapacity);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static T* AllocateList_NoInline<T>(int capacity, AllocatorManager.AllocatorHandle allocator, out int actualCapacity)
-            where T : unmanaged
-        {
-            return (T*)AllocateList_NoInline(sizeof(T), UnsafeUtility.AlignOf<T>(), capacity, allocator, out actualCapacity);
-        }
-
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        public static void IncreaseListCapacity_NoInline(ref UntypedUnsafeListMutable list, int elementSize, int elementAlignment, int capacity)
-        {
-            Assert.IsTrue(list.Ptr != null);
-            Assert.IsTrue(capacity > list.m_capacity);
-
-            CheckContainerElementSize(elementSize);
-            CheckIntPositivePowerOfTwo(elementAlignment);
-
-            CheckCapacityInRange(capacity, list.m_length);
-            CheckAllocator(list.Allocator);
-
-            int capacityCeilpow2 = math.ceilpow2(capacity);
-
-            void* oldPtr = list.Ptr;
-            list.Ptr = Memory.Unmanaged.Allocate(size: capacityCeilpow2 * elementSize, align: elementAlignment, list.Allocator);
-
-            list.m_capacity = capacityCeilpow2;
-
-            UnsafeUtility.MemCpy(list.Ptr, oldPtr, list.m_length * elementSize);
-            Memory.Unmanaged.Free(oldPtr, allocator: list.Allocator);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void EnsureListCapacity<T>(ref UntypedUnsafeListMutable list, int capacity)
+        public static void EnsureListCapacity<T>(ref UntypedUnsafeListMutable list, int capacity, bool keepOldData = true)
             where T : unmanaged
         {
             CheckContainerCapacity(capacity);
 
             if (capacity > list.m_capacity)
             {
-                IncreaseListCapacity_NoInline(ref list, elementSize: sizeof(T), elementAlignment: UnsafeUtility.AlignOf<T>(), capacity: capacity);
+                if (keepOldData)
+                {
+                    IncreaseListCapacityKeepOldData(ref list, elementSize: sizeof(T), elementAlignment: UnsafeUtility.AlignOf<T>(), capacity: capacity);
+                }
+                else
+                {
+                    IncreaseListCapacityTrashOldData(ref list, elementSize: sizeof(T), elementAlignment: UnsafeUtility.AlignOf<T>(), capacity: capacity);
+                }
 
                 Hint.Assume(list.Ptr != null);
                 Hint.Assume(list.m_capacity >= capacity);
@@ -98,30 +69,71 @@ namespace Unity.Collections
             EnsureListCapacity<T>(ref list, list.m_length + slack);
         }
 
+        internal static void IncreaseListCapacityKeepOldData(ref UntypedUnsafeListMutable list, int elementSize, int elementAlignment, int capacity)
+        {
+            IncreaseListCapacity(ref list, elementSize, elementAlignment, capacity, keepOldData: true);
+        }
+
+        internal static void IncreaseListCapacityTrashOldData(ref UntypedUnsafeListMutable list, int elementSize, int elementAlignment, int capacity)
+        {
+            IncreaseListCapacity(ref list, elementSize, elementAlignment, capacity, keepOldData: false);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static void IncreaseListCapacity(ref UntypedUnsafeListMutable list, int elementSize, int elementAlignment, int capacity, bool keepOldData)
+        {
+            Assert.IsTrue(list.Ptr != null);
+            Assert.IsTrue(capacity > list.m_capacity);
+
+            CheckContainerElementSize(elementSize);
+            CheckIntPositivePowerOfTwo(elementAlignment);
+
+            CheckCapacityInRange(capacity, list.m_length);
+            CheckAllocator(list.Allocator);
+
+            int capacityCeilPow2 = math.ceilpow2(capacity);
+
+            void* oldPtr = list.Ptr;
+            list.Ptr = Memory.Unmanaged.Allocate(size: capacityCeilPow2 * elementSize, align: elementAlignment, list.Allocator);
+
+            list.m_capacity = capacityCeilPow2;
+
+            if (keepOldData)
+            {
+                UnsafeUtility.MemCpy(list.Ptr, oldPtr, list.m_length * elementSize);
+            }
+
+            Memory.Unmanaged.Free(oldPtr, allocator: list.Allocator);
+        }
+
         public struct Unmanaged
         {
+            [HideInCallstack]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static void* Allocate(long size, int align, AllocatorManager.AllocatorHandle allocator)
             {
                 return Memory.Unmanaged.Allocate(size, align, allocator);
             }
 
+            [HideInCallstack]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static void Free(void* pointer, AllocatorManager.AllocatorHandle allocator)
             {
                 Memory.Unmanaged.Free(pointer, allocator);
             }
 
+            [HideInCallstack]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static T* Allocate<T>(AllocatorManager.AllocatorHandle allocator) where T : unmanaged
             {
                 return Memory.Unmanaged.Allocate<T>(allocator);
             }
 
+            [HideInCallstack]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static void Free<T>(T* pointer, AllocatorManager.AllocatorHandle allocator) where T : unmanaged
             {
-                Memory.Unmanaged.Free<T>(pointer, allocator);
+                Memory.Unmanaged.Free(pointer, allocator);
             }
         }
     }

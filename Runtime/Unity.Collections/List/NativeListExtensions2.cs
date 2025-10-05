@@ -29,7 +29,7 @@ namespace Unity.Collections.LowLevel.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void EnsureCapacity<T>(this ref NativeList<T> self, int capacity)
+        public static void EnsureCapacity<T>(this ref NativeList<T> self, int capacity, bool keepOldData = true)
             where T : unmanaged
         {
             if (capacity > self.Capacity)
@@ -37,7 +37,7 @@ namespace Unity.Collections.LowLevel.Unsafe
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
                 AtomicSafetyHandle.CheckWriteAndBumpSecondaryVersion(self.m_Safety);
 #endif
-                UnsafeListExtensions2.EnsureCapacity(ref *self.GetUnsafeList(), capacity);
+                UnsafeListExtensions2.EnsureCapacity(ref *self.GetUnsafeList(), capacity, keepOldData);
             }
         }
 

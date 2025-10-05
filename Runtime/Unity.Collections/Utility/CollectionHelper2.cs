@@ -67,6 +67,14 @@ namespace Unity.Collections
         [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
         [Conditional("UNITY_DOTS_DEBUG")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void CheckContainerIndexInRange(int index, int length)
+        {
+            CollectionHelper.CheckIndexInRange(index: index, length: length);
+        }
+
+        [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
+        [Conditional("UNITY_DOTS_DEBUG")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void CheckAddNoResizeHasEnoughCapacity(int length, int capacity, int count)
         {
             CheckContainerLength(length);
@@ -75,7 +83,7 @@ namespace Unity.Collections
 
             if (Hint.Unlikely(length + count > capacity))
             {
-                throw new InvalidOperationException($"AddNoResize assumes that list capacity is sufficient (Length = {length}, Capacity = {capacity}, Count = {count}).");
+                throw new InvalidOperationException($"AddNoResize assumes that capacity is sufficient (Current length = {length}, Capacity = {capacity}, Count to add = {count}).");
             }
         }
     }

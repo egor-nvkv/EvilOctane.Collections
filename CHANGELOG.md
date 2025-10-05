@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.11.0] - 2025-10-05
+
+* EnsureCapacity and HashMapHelperRef.Resize now have an option to trash old data
+* InlineHashMap bucket capacity is now a power of 2 as it should be
+* InlineHashMap Remove method is removed (...) for now
+
 ## [0.10.4] - 2025-10-01
 
 UnsafeUtility improvements

@@ -8,7 +8,5 @@ namespace Unity.Collections.LowLevel.Unsafe
         public int Count;
         public int Capacity;
         public int BucketCapacity;
-        public int AllocatedIndex;
-        public int FirstFreeIdx;
     }
 }

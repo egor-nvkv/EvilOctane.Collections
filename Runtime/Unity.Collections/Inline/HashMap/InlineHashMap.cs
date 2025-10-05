@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using Unity.Mathematics;
 using static System.Runtime.CompilerServices.Unsafe;
@@ -35,8 +34,8 @@ namespace Unity.Collections.LowLevel.Unsafe
         {
             CheckContainerCapacity(capacity);
 
-            int bucketSize = HashMapHelper<TKey>.GetBucketSize(capacity);
-            nint bucketTotalSize = sizeof(int) * bucketSize;
+            int bucketCapacity = GetBucketCapacity(capacity);
+            nint bucketTotalSize = bucketCapacity * sizeof(int);
 
             return GetBucketOffset(capacity) + bucketTotalSize;
         }
@@ -56,7 +55,7 @@ namespace Unity.Collections.LowLevel.Unsafe
 
             header->Count = 0;
             header->Capacity = capacity;
-            header->BucketCapacity = HashMapHelper<TKey>.GetBucketSize(capacity);
+            header->BucketCapacity = GetBucketCapacity(capacity);
 
             Clear(header);
         }
@@ -65,7 +64,9 @@ namespace Unity.Collections.LowLevel.Unsafe
         public static void Clear(InlineHashMapHeader<TKey>* header)
         {
             int* nextPtr = GetNextPtr(header);
-            int* bucketEndPtr = GetBucketPtr(header) + (header->BucketCapacity * sizeof(int));
+
+            int bucketSize = header->BucketCapacity * sizeof(int);
+            int* bucketEndPtr = GetBucketPtr(header) + bucketSize;
 
             for (int index = 0, length = (int)(bucketEndPtr - nextPtr); index != length; ++index)
             {
@@ -73,8 +74,6 @@ namespace Unity.Collections.LowLevel.Unsafe
             }
 
             header->Count = 0;
-            header->AllocatedIndex = 0;
-            header->FirstFreeIdx = -1;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -86,7 +85,7 @@ namespace Unity.Collections.LowLevel.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int Find(InlineHashMapHeader<TKey>* header, TKey key)
         {
-            if (header->AllocatedIndex <= 0)
+            if (header->Count == 0)
             {
                 return -1;
             }
@@ -176,33 +175,20 @@ namespace Unity.Collections.LowLevel.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int AddUncheckedNoResize(InlineHashMapHeader<TKey>* header, TKey key)
         {
-            int* nextPtr = GetNextPtr(header);
-
-            // Allocate an entry from the free list
-            int idx = header->FirstFreeIdx;
-
-            if (idx >= 0)
-            {
-                header->FirstFreeIdx = nextPtr[idx];
-            }
-            else
-            {
-                idx = header->AllocatedIndex++;
-            }
-
-            CheckIndexOutOfBounds(header, idx);
+            CheckAddNoResizeHasEnoughCapacity(header->Count, header->Capacity, 1);
+            int idx = header->Count++;
 
             GetKeyPtr(header)[idx] = key;
             int bucket = GetBucket(header, key);
 
-            int* bucketPtr = GetBucketPtr(header);
-
             // Add the index to the hashCode-map
+            int* nextPtr = GetNextPtr(header);
             int* next = nextPtr;
-            next[idx] = bucketPtr[bucket];
-            bucketPtr[bucket] = idx;
-            ++header->Count;
 
+            int* bucketPtr = GetBucketPtr(header);
+            next[idx] = bucketPtr[bucket];
+
+            bucketPtr[bucket] = idx;
             return idx;
         }
 
@@ -250,70 +236,22 @@ namespace Unity.Collections.LowLevel.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool Remove(InlineHashMapHeader<TKey>* header, TKey key)
-        {
-            if (header->Capacity == 0)
-            {
-                return false;
-            }
-
-            int removed = 0;
-
-            // First find the slot based on the hash
-            int bucket = GetBucket(header, key);
-
-            TKey* keyPtr = GetKeyPtr(header);
-            int* nextPtr = GetNextPtr(header);
-            int* bucketPtr = GetBucketPtr(header);
-
-            int prevEntry = -1;
-            int entryIdx = bucketPtr[bucket];
-
-            while (entryIdx >= 0 && entryIdx < header->Capacity)
-            {
-                if (keyPtr[entryIdx].Equals(key))
-                {
-                    ++removed;
-
-                    // Found matching element, remove it
-                    if (prevEntry < 0)
-                    {
-                        bucketPtr[bucket] = nextPtr[entryIdx];
-                    }
-                    else
-                    {
-                        nextPtr[prevEntry] = nextPtr[entryIdx];
-                    }
-
-                    // And free the index
-                    int nextIdx = nextPtr[entryIdx];
-                    nextPtr[entryIdx] = header->FirstFreeIdx;
-                    header->FirstFreeIdx = entryIdx;
-                    entryIdx = nextIdx;
-
-                    break;
-                }
-                else
-                {
-                    prevEntry = entryIdx;
-                    entryIdx = nextPtr[entryIdx];
-                }
-            }
-
-            header->Count -= removed;
-            return removed != 0;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Enumerator GetEnumerator(InlineHashMapHeader<TKey>* header)
         {
             return new Enumerator(header);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static int GetBucketCapacity(int capacity)
+        {
+            return math.ceilpow2(capacity) * 2;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static int GetBucket(InlineHashMapHeader<TKey>* header, uint hashCode)
         {
-            return (int)(hashCode & (header->BucketCapacity - 1));
+            int mask = header->BucketCapacity - 1;
+            return (int)(hashCode & mask);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -332,19 +270,19 @@ namespace Unity.Collections.LowLevel.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static nint GetKeyOffset(int capacity)
         {
-            return Align(GetValueOffset() + (sizeof(TValue) * capacity), AlignOf<TKey>());
+            return Align(GetValueOffset() + (capacity * sizeof(TValue)), AlignOf<TKey>());
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static nint GetNextOffset(int capacity)
         {
-            return Align(GetKeyOffset(capacity) + (sizeof(TKey) * capacity), AlignOf<int>());
+            return Align(GetKeyOffset(capacity) + (capacity * sizeof(TKey)), AlignOf<int>());
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static nint GetBucketOffset(int capacity)
         {
-            return Align(GetNextOffset(capacity) + (sizeof(int) * capacity), AlignOf<int>());
+            return Align(GetNextOffset(capacity) + (capacity * sizeof(int)), AlignOf<int>());
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -369,17 +307,6 @@ namespace Unity.Collections.LowLevel.Unsafe
         internal static int* GetBucketPtr(InlineHashMapHeader<TKey>* header)
         {
             return (int*)((byte*)header + GetBucketOffset(header->Capacity));
-        }
-
-        [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
-        [Conditional("UNITY_DOTS_DEBUG")]
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void CheckIndexOutOfBounds(InlineHashMapHeader<TKey>* header, int idx)
-        {
-            if ((uint)idx >= (uint)header->Capacity)
-            {
-                throw new InvalidOperationException($"Internal HashMap error. idx {idx}");
-            }
         }
 
         public struct Enumerator : IEnumerator<InlineHashMapKVPair<TKey, TValue>>
