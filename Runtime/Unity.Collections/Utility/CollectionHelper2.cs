@@ -2,18 +2,21 @@ using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using Unity.Burst.CompilerServices;
+using UnityEngine;
 
 namespace Unity.Collections
 {
     [GenerateTestsForBurstCompatibility]
     public static unsafe partial class CollectionHelper2
     {
+        [DebuggerStepThrough, HideInCallstack]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static nint Align(nint size, nint alignmentPowerOfTwo)
         {
             return (nint)CollectionHelper.Align((ulong)size, (ulong)alignmentPowerOfTwo);
         }
 
+        [DebuggerStepThrough, HideInCallstack]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static nuint Align(nuint size, nuint alignmentPowerOfTwo)
         {
@@ -66,6 +69,7 @@ namespace Unity.Collections
 
         [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
         [Conditional("UNITY_DOTS_DEBUG")]
+        [DebuggerStepThrough, HideInCallstack]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void CheckContainerIndexInRange(int index, int length)
         {

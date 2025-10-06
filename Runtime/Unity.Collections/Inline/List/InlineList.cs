@@ -33,12 +33,6 @@ namespace Unity.Collections.LowLevel.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static nint GetActualAllocationSize(InlineListHeader<T>* header)
-        {
-            return GetTotalAllocationSize(header->Length);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void Create(InlineListHeader<T>* header, int capacity)
         {
             int valueAlignment = AlignOf<T>();

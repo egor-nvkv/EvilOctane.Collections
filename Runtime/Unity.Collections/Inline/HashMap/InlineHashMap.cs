@@ -41,12 +41,6 @@ namespace Unity.Collections.LowLevel.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static nint GetActualAllocationSize(InlineHashMapHeader<TKey>* header)
-        {
-            return GetTotalAllocationSize(header->Count);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void Create(InlineHashMapHeader<TKey>* header, int capacity)
         {
             CheckIsAligned(header, AlignOf<TValue>());
