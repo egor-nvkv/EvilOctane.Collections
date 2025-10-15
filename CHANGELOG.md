@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.12.0] - 2025-10-15
+
+* InlineHashMap is replaced by SwissTable
+* Switched to (seemingly) more appropriate Unity companion license
+
 ## [0.11.0] - 2025-10-05
 
 * EnsureCapacity and HashMapHelperRef.Resize now have an option to trash old data

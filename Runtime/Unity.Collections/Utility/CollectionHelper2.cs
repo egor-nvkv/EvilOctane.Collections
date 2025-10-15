@@ -23,6 +23,13 @@ namespace Unity.Collections
             return (nuint)CollectionHelper.Align(size, alignmentPowerOfTwo);
         }
 
+        [DebuggerStepThrough, HideInCallstack]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void* AlignPointer(void* ptr, int alignmentPowerOfTwo)
+        {
+            return CollectionHelper.AlignPointer(ptr, alignmentPowerOfTwo);
+        }
+
         [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
         [Conditional("UNITY_DOTS_DEBUG")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

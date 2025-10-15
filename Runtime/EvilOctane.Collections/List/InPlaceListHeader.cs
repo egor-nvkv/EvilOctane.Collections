@@ -1,6 +1,6 @@
-namespace Unity.Collections.LowLevel.Unsafe
+namespace EvilOctane.Collections.LowLevel.Unsafe
 {
-    public struct InlineListHeader<T>
+    public struct InPlaceListHeader<T>
         where T : unmanaged
     {
         public int Length;

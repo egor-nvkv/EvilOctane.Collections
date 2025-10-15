@@ -1,22 +1,24 @@
 using System.Runtime.CompilerServices;
+using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
 using static Unity.Collections.CollectionHelper;
 using static Unity.Collections.CollectionHelper2;
 using static Unity.Collections.LowLevel.Unsafe.UnsafeUtility;
 using static Unity.Collections.LowLevel.Unsafe.UnsafeUtility2;
 
-namespace Unity.Collections.LowLevel.Unsafe
+namespace EvilOctane.Collections.LowLevel.Unsafe
 {
     [GenerateTestsForBurstCompatibility(GenericTypeArguments = new[] { typeof(int) })]
-    public unsafe struct InlineList<T>
+    public unsafe struct InPlaceList<T>
         where T : unmanaged
     {
-        public static int Alignment
+        public static int BufferAlignment
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                int headerAlignment = AlignOf<InlineListHeader<T>>();
+                int headerAlignment = AlignOf<InPlaceListHeader<T>>();
                 int elementAlignment = AlignOf<T>();
 
                 return math.max(headerAlignment, elementAlignment);
@@ -24,16 +26,16 @@ namespace Unity.Collections.LowLevel.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static nint GetTotalAllocationSize(int capacity)
+        public static nint GetAllocationSize(int capacity)
         {
             CheckContainerCapacity(capacity);
 
-            nint elementOffset = Align(sizeof(InlineListHeader<T>), (nint)AlignOf<T>());
+            nint elementOffset = Align(sizeof(InPlaceListHeader<T>), (nint)AlignOf<T>());
             return elementOffset + (capacity * sizeof(T));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void Create(InlineListHeader<T>* header, int capacity)
+        public static void Create(InPlaceListHeader<T>* header, int capacity)
         {
             int valueAlignment = AlignOf<T>();
             CheckIsAligned(header, valueAlignment);
@@ -43,14 +45,14 @@ namespace Unity.Collections.LowLevel.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static T* GetElementPointer(InlineListHeader<T>* header)
+        public static T* GetElementPointer(InPlaceListHeader<T>* header)
         {
-            byte* afterHeaderPtr = (byte*)header + sizeof(InlineListHeader<T>);
+            byte* afterHeaderPtr = (byte*)header + sizeof(InPlaceListHeader<T>);
             return (T*)AlignPointer(afterHeaderPtr, AlignOf<T>());
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void AddNoResize(InlineListHeader<T>* header, T item)
+        public static void AddNoResize(InPlaceListHeader<T>* header, T item)
         {
             CheckAddNoResizeHasEnoughCapacity(header->Length, header->Capacity, 1);
 
@@ -59,7 +61,7 @@ namespace Unity.Collections.LowLevel.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void AddRangeNoResize(InlineListHeader<T>* header, UnsafeSpan<T> items)
+        public static void AddRangeNoResize(InPlaceListHeader<T>* header, UnsafeSpan<T> items)
         {
             CheckAddNoResizeHasEnoughCapacity(header->Length, header->Capacity, items.Length);
 
@@ -70,9 +72,9 @@ namespace Unity.Collections.LowLevel.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void RemoveAtSwapBack(InlineListHeader<T>* header, int index)
+        public static void RemoveAtSwapBack(InPlaceListHeader<T>* header, int index)
         {
-            CheckIndexInRange(index, header->Length);
+            CheckContainerIndexInRange(index, header->Length);
 
             T* ptr = GetElementPointer(header);
             ref int length = ref header->Length;
@@ -82,7 +84,7 @@ namespace Unity.Collections.LowLevel.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static UnsafeSpan<T> AsSpan(InlineListHeader<T>* header)
+        public static UnsafeSpan<T> AsSpan(InPlaceListHeader<T>* header)
         {
             return new UnsafeSpan<T>(GetElementPointer(header), header->Length);
         }
