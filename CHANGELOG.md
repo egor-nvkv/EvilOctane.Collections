@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.12.1] - 2025-10-17
+
+* UnsafeSwissTable added
+
 ## [0.12.0] - 2025-10-15
 
 * InlineHashMap is replaced by SwissTable

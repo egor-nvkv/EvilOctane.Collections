@@ -1,6 +1,5 @@
 using System;
 using System.Runtime.InteropServices;
-using static EvilOctane.Collections.SwissTable;
 
 namespace EvilOctane.Collections.LowLevel.Unsafe
 {
@@ -11,7 +10,5 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
     {
         public int Count;
         public int CapacityCeilGroupSize;
-
-        public readonly int GroupCount => CapacityCeilGroupSize / GroupSize;
     }
 }

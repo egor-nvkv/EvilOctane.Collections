@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using Unity.Burst.CompilerServices;
 using Unity.Collections.LowLevel.Unsafe;
+using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Assertions;
@@ -67,6 +68,17 @@ namespace Unity.Collections
         {
             CheckContainerCapacity(slack);
             EnsureListCapacity<T>(ref list, list.m_length + slack);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static JobHandle ScheduleDispose<T>(T* ptr, AllocatorManager.AllocatorHandle allocator, JobHandle inputDeps = new())
+            where T : unmanaged
+        {
+            return new UnsafeDisposeJob
+            {
+                Ptr = ptr,
+                Allocator = allocator
+            }.Schedule(inputDeps);
         }
 
         internal static void IncreaseListCapacityKeepOldData(ref UntypedUnsafeListMutable list, int elementSize, int elementAlignment, int capacity)

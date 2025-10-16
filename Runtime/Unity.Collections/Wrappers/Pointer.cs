@@ -7,15 +7,21 @@ namespace Unity.Collections.LowLevel.Unsafe
     public readonly unsafe struct Pointer<T>
         where T : unmanaged
     {
-        public readonly T* Value;
+        public readonly T* Ptr;
+
+        public readonly bool IsNull
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => Ptr == null;
+        }
 
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-        public ref T Ref => ref *Value;
+        public ref T Ref => ref *Ptr;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Pointer(T* value)
         {
-            Value = value;
+            Ptr = value;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -27,7 +33,7 @@ namespace Unity.Collections.LowLevel.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static implicit operator T*(Pointer<T> self)
         {
-            return self.Value;
+            return self.Ptr;
         }
     }
 }
