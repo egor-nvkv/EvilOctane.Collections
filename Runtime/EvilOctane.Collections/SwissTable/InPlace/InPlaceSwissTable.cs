@@ -19,7 +19,7 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
         where TValue : unmanaged
         where THasher : unmanaged, IHasher64<TKey>
     {
-        public static int Alignment
+        public static int BufferAlignment
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => math.max(AlignOf<InPlaceSwissTableHeader<TKey, TValue>>(), SwissTable<TKey, TValue>.BufferAlignment);
@@ -60,7 +60,7 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
         public static ref TValue TryGet(InPlaceSwissTableHeader<TKey, TValue>* header, TKey key, out bool exists)
         {
             byte* buffer = (byte*)header + ControlOffset;
-            int index = SwissTable<TKey, TValue>.Find<THasher>(buffer, header->CapacityCeilGroupSize, key, true, out _, out exists);
+            int index = SwissTable<TKey, TValue>.Find<THasher>(buffer, header->CapacityCeilGroupSize, key, out byte h2, out exists);
 
             KeyValue<TKey, TValue>* groupPtr = GetGroupPtr(header);
             return ref exists ? ref groupPtr[index].Value : ref NullRef<TValue>();
@@ -70,7 +70,7 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
         public static ref TValue GetOrAddNoResize(InPlaceSwissTableHeader<TKey, TValue>* header, TKey key, out bool added)
         {
             byte* buffer = (byte*)header + ControlOffset;
-            int index = SwissTable<TKey, TValue>.Find<THasher>(buffer, header->CapacityCeilGroupSize, key, true, out byte h2, out bool exists);
+            int index = SwissTable<TKey, TValue>.Find<THasher>(buffer, header->CapacityCeilGroupSize, key, out byte h2, out bool exists);
 
             if (exists)
             {
@@ -97,15 +97,15 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
 
             ++header->Count;
 
-            int index = SwissTable<TKey, TValue>.Find<THasher>(buffer, header->CapacityCeilGroupSize, key, false, out byte h2, out _);
+            int index = SwissTable<TKey, TValue>.FindEmpty<THasher>(buffer, header->CapacityCeilGroupSize, key, out byte h2);
             return ref SwissTable<TKey, TValue>.Insert(buffer, header->CapacityCeilGroupSize, index, key, h2);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static SwissTable<TKey, TValue>.UnsafeEnumerator GetEnumerator(InPlaceSwissTableHeader<TKey, TValue>* header)
+        public static SwissTable<TKey, TValue>.Enumerator GetEnumerator(InPlaceSwissTableHeader<TKey, TValue>* header)
         {
             byte* buffer = (byte*)header + ControlOffset;
-            return new SwissTable<TKey, TValue>.UnsafeEnumerator(buffer, header->CapacityCeilGroupSize);
+            return new SwissTable<TKey, TValue>.Enumerator(buffer, header->CapacityCeilGroupSize);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -13,7 +13,7 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
     public unsafe struct InPlaceList<T>
         where T : unmanaged
     {
-        public static int Alignment
+        public static int BufferAlignment
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get

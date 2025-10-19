@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.12.2] - 2025-10-20
+
+* UnsafeSwissSet added
+
 ## [0.12.1] - 2025-10-17
 
 * UnsafeSwissTable added
