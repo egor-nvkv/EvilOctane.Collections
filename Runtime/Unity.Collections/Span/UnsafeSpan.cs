@@ -5,6 +5,8 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using Unity.Burst.CompilerServices;
 using Unity.Mathematics;
+using static Unity.Collections.CollectionHelper;
+using static Unity.Collections.CollectionHelper2;
 using static Unity.Collections.LowLevel.Unsafe.UnsafeUtility2;
 using SystemUnsafe = System.Runtime.CompilerServices.Unsafe;
 
@@ -32,7 +34,7 @@ namespace Unity.Collections.LowLevel.Unsafe
         public int Length
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            readonly get => CollectionHelper.AssumePositive(LengthField);
+            readonly get => AssumePositive(LengthField);
             [Obsolete("UnsafeSpan is immutable.", true)]
             set => throw new NotSupportedException();
         }
@@ -56,13 +58,13 @@ namespace Unity.Collections.LowLevel.Unsafe
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             readonly get
             {
-                CollectionHelper.CheckIndexInRange(index, LengthField);
+                CheckIndexInRange(index, LengthField);
                 return Ptr[index];
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set
             {
-                CollectionHelper.CheckIndexInRange(index, LengthField);
+                CheckIndexInRange(index, LengthField);
                 Ptr[index] = value;
             }
         }
@@ -70,17 +72,39 @@ namespace Unity.Collections.LowLevel.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public UnsafeSpan(T* ptr, int length)
         {
+            CheckContainerLength(length);
+            CheckPtr(ptr, length);
+
             Ptr = ptr;
             LengthField = length;
+        }
 
-            CheckPtr(ptr, length);
-            CheckLengthInRange(length);
+        [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
+        [Conditional("UNITY_DOTS_DEBUG")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void CheckPtr(T* ptr, int length)
+        {
+            if (ptr == null && (uint)length > 0)
+            {
+                throw new ArgumentException("Ptr cannot be null with non-zero length.");
+            }
+        }
+
+        [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
+        [Conditional("UNITY_DOTS_DEBUG")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void CheckCopyLengths(int srcLength, int dstLength)
+        {
+            if (srcLength != dstLength)
+            {
+                throw new ArgumentException("Source and Destination length must be the same.");
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public readonly ref T ElementAt(int index)
         {
-            CollectionHelper.CheckIndexInRange(index, LengthField);
+            CheckIndexInRange(index, LengthField);
             return ref Ptr[index];
         }
 
@@ -148,13 +172,13 @@ namespace Unity.Collections.LowLevel.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public readonly NativeArray<T> AsNativeArray()
         {
-            return CollectionHelper.ConvertExistingDataToNativeArray<T>(Ptr, Length, Allocator.None, true);
+            return ConvertExistingDataToNativeArray<T>(Ptr, Length, Allocator.None, true);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public readonly NativeArray<T> ToNativeArray(AllocatorManager.AllocatorHandle allocator)
         {
-            NativeArray<T> array = CollectionHelper.CreateNativeArray<T>(Length, allocator, NativeArrayOptions.UninitializedMemory);
+            NativeArray<T> array = CreateNativeArray<T>(Length, allocator, NativeArrayOptions.UninitializedMemory);
             array.AsSpanRW().CopyFrom(this);
             return array;
         }
@@ -245,28 +269,6 @@ namespace Unity.Collections.LowLevel.Unsafe
         [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
         [Conditional("UNITY_DOTS_DEBUG")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private readonly void CheckPtr(T* ptr, int length)
-        {
-            if (ptr == null && (uint)length > 0)
-            {
-                throw new ArgumentException("Ptr cannot be null with non-zero length.");
-            }
-        }
-
-        [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
-        [Conditional("UNITY_DOTS_DEBUG")]
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private readonly void CheckLengthInRange(int length)
-        {
-            if (length < 0)
-            {
-                throw new ArgumentOutOfRangeException($"Length {length} must be non-negative.");
-            }
-        }
-
-        [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
-        [Conditional("UNITY_DOTS_DEBUG")]
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private readonly void CheckSliceArgs(int startIndex, int length)
         {
             if (startIndex < 0)
@@ -282,17 +284,6 @@ namespace Unity.Collections.LowLevel.Unsafe
             if (length < 0)
             {
                 throw new ArgumentOutOfRangeException($"Length {length} must be non-negative.");
-            }
-        }
-
-        [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
-        [Conditional("UNITY_DOTS_DEBUG")]
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private readonly void CheckCopyLengths(int srcLength, int dstLength)
-        {
-            if (srcLength != dstLength)
-            {
-                throw new ArgumentException("source and destination length must be the same");
             }
         }
 

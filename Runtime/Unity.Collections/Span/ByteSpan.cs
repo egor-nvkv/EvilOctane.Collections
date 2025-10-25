@@ -4,6 +4,9 @@ using System.Runtime.CompilerServices;
 using Unity.Burst;
 using Unity.Burst.CompilerServices;
 using Unity.Mathematics;
+using static Unity.Collections.CollectionHelper;
+using static Unity.Collections.CollectionHelper2;
+using static Unity.Collections.LowLevel.Unsafe.UnsafeUtility2;
 
 namespace Unity.Collections.LowLevel.Unsafe
 {
@@ -31,7 +34,7 @@ namespace Unity.Collections.LowLevel.Unsafe
         public int Length
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            readonly get => CollectionHelper.AssumePositive(LengthField);
+            readonly get => AssumePositive(LengthField);
             [Obsolete("ByteSpan is immutable.", true)]
             set => throw new NotSupportedException();
         }
@@ -55,13 +58,13 @@ namespace Unity.Collections.LowLevel.Unsafe
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             readonly get
             {
-                CollectionHelper.CheckIndexInRange(index, LengthField);
+                CheckIndexInRange(index, LengthField);
                 return Ptr[index];
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set
             {
-                CollectionHelper.CheckIndexInRange(index, LengthField);
+                CheckIndexInRange(index, LengthField);
                 Ptr[index] = value;
             }
         }
@@ -69,11 +72,22 @@ namespace Unity.Collections.LowLevel.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ByteSpan(byte* ptr, int length)
         {
+            CheckContainerLength(length);
+            CheckPtr(ptr, length);
+
             Ptr = ptr;
             LengthField = length;
+        }
 
-            CheckPtr(ptr, length);
-            CheckLengthInRange(length);
+        [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
+        [Conditional("UNITY_DOTS_DEBUG")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void CheckPtr(byte* ptr, int length)
+        {
+            if (ptr == null && (uint)length > 0)
+            {
+                throw new ArgumentException("Ptr cannot be null with non-zero length.");
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -91,7 +105,7 @@ namespace Unity.Collections.LowLevel.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public readonly ref byte ElementAt(int index)
         {
-            CollectionHelper.CheckIndexInRange(index, LengthField);
+            CheckIndexInRange(index, LengthField);
             return ref Ptr[index];
         }
 
@@ -181,15 +195,16 @@ namespace Unity.Collections.LowLevel.Unsafe
         }
 
         /// <summary>
-        /// Based on <seealso cref="xxHash3.Hash64"/>.
-        /// The result is different from hash code returned by <seealso cref="NativeText.GetHashCode"/>
+        /// Uses <see cref="xxHash3.Hash64"/>.
+        /// The result is different from hash code returned by <see cref="NativeText.GetHashCode"/>
         /// and other UTF-8 based containers.
         /// </summary>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override readonly int GetHashCode()
         {
-            return xxHash3.Hash64(Ptr, Length).GetHashCode();
+            uint2 hash = xxHash3.Hash64(Ptr, Length);
+            return Reinterpret<uint2, ulong>(ref hash).GetHashCode();
         }
 
         [ExcludeFromBurstCompatTesting("Returns managed string")]
@@ -230,28 +245,6 @@ namespace Unity.Collections.LowLevel.Unsafe
             result = ((ReadOnlySpan<byte>)this).SequenceEqual(other);
         }
 
-        [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
-        [Conditional("UNITY_DOTS_DEBUG")]
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private readonly void CheckPtr(byte* ptr, int length)
-        {
-            if (ptr == null && (uint)length > 0)
-            {
-                throw new ArgumentException("Ptr cannot be null with non-zero length.");
-            }
-        }
-
-        [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
-        [Conditional("UNITY_DOTS_DEBUG")]
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private readonly void CheckLengthInRange(int length)
-        {
-            if (length < 0)
-            {
-                throw new ArgumentOutOfRangeException($"Length {length} must be non-negative.");
-            }
-        }
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static implicit operator Span<byte>(ByteSpan self)
         {
@@ -267,13 +260,14 @@ namespace Unity.Collections.LowLevel.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static implicit operator ByteSpan(UnsafeText unsafeText)
         {
-            return new ByteSpan(unsafeText.GetUnsafePtr(), unsafeText.Length);
+            int length = math.max(unsafeText.Length, 0);
+            return new ByteSpan(unsafeText.GetUnsafePtr(), length);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static implicit operator ByteSpan(NativeText nativeText)
         {
-            return new ByteSpan(nativeText.GetUnsafePtr(), nativeText.Length);
+            return nativeText.IsCreated ? (ByteSpan)(*nativeText.GetUnsafeText()) : Empty;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

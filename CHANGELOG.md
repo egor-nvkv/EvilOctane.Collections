@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.12.3] - 2025-10-25
+
+* ByteSpan, UnsafeSpan fixes
+
 ## [0.12.2] - 2025-10-20
 
 * UnsafeSwissSet added
