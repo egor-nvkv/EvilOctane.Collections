@@ -267,7 +267,7 @@ namespace Unity.Collections.LowLevel.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static implicit operator ByteSpan(NativeText nativeText)
         {
-            return nativeText.IsCreated ? (ByteSpan)(*nativeText.GetUnsafeText()) : Empty;
+            return nativeText.IsCreated ? new ByteSpan(nativeText.GetUnsafePtr(), nativeText.Length) : Empty;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
