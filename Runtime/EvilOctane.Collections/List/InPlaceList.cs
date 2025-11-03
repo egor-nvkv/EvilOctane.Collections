@@ -13,6 +13,8 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
     public unsafe struct InPlaceList<T>
         where T : unmanaged
     {
+        public const int MaxCapacity = int.MaxValue;
+
         public static int BufferAlignment
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -30,7 +32,7 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
         {
             CheckContainerCapacity(capacity);
 
-            nint elementOffset = Align(sizeof(InPlaceListHeader<T>), (nint)AlignOf<T>());
+            nint elementOffset = Align(sizeof(InPlaceListHeader<T>), AlignOf<T>());
             return elementOffset + (capacity * sizeof(T));
         }
 

@@ -8,10 +8,13 @@ namespace EvilOctane.Collections
         where T : unmanaged
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly ulong CalculateHash(T value)
+        public readonly ulong CalculateHash(in T value)
         {
-            uint2 hash = xxHash3.Hash64(&value, sizeof(T));
-            return hash.x | ((ulong)hash.y << 32);
+            fixed (T* ptr = &value)
+            {
+                uint2 hash = xxHash3.Hash64(ptr, sizeof(T));
+                return hash.x | ((ulong)hash.y << 32);
+            }
         }
     }
 }

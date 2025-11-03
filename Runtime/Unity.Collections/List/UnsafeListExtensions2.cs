@@ -3,18 +3,18 @@ using static Unity.Collections.LowLevel.Unsafe.UnsafeUtility2;
 
 namespace Unity.Collections.LowLevel.Unsafe
 {
-    public static unsafe class UnsafeListExtensions2
+    public static unsafe partial class UnsafeListExtensions2
     {
         public static UnsafeList<T> Create<T>(int capacity, AllocatorManager.AllocatorHandle allocator)
             where T : unmanaged
         {
-            T* ptr = MemoryExposed.AllocateList<T>(capacity, allocator, out int actualCapacity);
+            T* ptr = MemoryExposed.AllocateList<T>(capacity, allocator, out nint actualCapacity);
 
             return new UnsafeList<T>()
             {
                 Ptr = ptr,
                 m_length = 0,
-                m_capacity = actualCapacity,
+                m_capacity = (int)actualCapacity,
                 Allocator = allocator
             };
         }

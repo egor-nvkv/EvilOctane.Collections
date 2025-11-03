@@ -41,6 +41,12 @@ namespace EvilOctane.Collections
         public const byte ControlSentinel = 0xff;
         public const byte ControlFullMask = 0x7f;
 
+        public static int MaxCapacity
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => (int)(Align((long)int.MaxValue, GroupSize) - GroupSize);
+        }
+
         public static int ControlAlignment
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -188,7 +194,7 @@ namespace EvilOctane.Collections
             CheckIsAligned(buffer, ControlAlignment);
             CheckCapacity(capacityCeilGroupSize);
 
-            ulong hash = default(THasher).CalculateHash(key);
+            ulong hash = default(THasher).CalculateHash(in key);
 
             ulong h1 = H1(hash);
             h2 = H2(hash);
@@ -417,8 +423,8 @@ namespace EvilOctane.Collections
     /// <typeparam name="TKey"></typeparam>
     /// <typeparam name="TValue"></typeparam>
     public unsafe struct SwissTable<TKey, TValue>
-    where TKey : unmanaged, IEquatable<TKey>
-    where TValue : unmanaged
+        where TKey : unmanaged, IEquatable<TKey>
+        where TValue : unmanaged
     {
         public static int BufferAlignment
         {
@@ -511,6 +517,19 @@ namespace EvilOctane.Collections
             while (enumerator.MoveNext())
             {
                 valuePtr[index++] = enumerator.Current.ValueRef;
+            }
+        }
+
+        public static void CopyKeysAndValuesTo(byte* buffer, int capacityCeilGroupSize, TKey* keyPtr, TValue* valuePtr)
+        {
+            Enumerator enumerator = new(buffer, capacityCeilGroupSize);
+            int index = 0;
+
+            while (enumerator.MoveNext())
+            {
+                keyPtr[index] = enumerator.Current.KeyRefRO;
+                valuePtr[index] = enumerator.Current.ValueRef;
+                ++index;
             }
         }
 

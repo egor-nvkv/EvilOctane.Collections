@@ -3,7 +3,7 @@ using static System.Runtime.CompilerServices.Unsafe;
 
 namespace Unity.Collections.LowLevel.Unsafe
 {
-    public static unsafe class NativeListExtensions2
+    public static unsafe partial class NativeListExtensions2
     {
         public static NativeList<T> Create<T>(int capacity, AllocatorManager.AllocatorHandle allocator)
             where T : unmanaged

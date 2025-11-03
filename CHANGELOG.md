@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.13.0] - 2025-11-03
+
+* Collection sizes as nint
+* SwissTable fixes
+
 ## [0.12.3] - 2025-10-25
 
 * ByteSpan, UnsafeSpan fixes

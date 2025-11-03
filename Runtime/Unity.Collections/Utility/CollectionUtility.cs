@@ -3,10 +3,8 @@ using System.Runtime.CompilerServices;
 
 namespace Unity.Collections
 {
-    [GenerateTestsForBurstCompatibility]
     public static unsafe partial class CollectionUtility
     {
-        [GenerateTestsForBurstCompatibility(GenericTypeArguments = new[] { typeof(int) })]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int FindOrderedInsertionIndex<T>(T* ptr, int length, T value)
             where T : unmanaged, IComparable<T>

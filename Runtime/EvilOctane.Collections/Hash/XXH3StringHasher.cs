@@ -8,7 +8,7 @@ namespace EvilOctane.Collections
         where T : unmanaged, INativeList<byte>, IUTF8Bytes
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly ulong CalculateHash(T value)
+        public readonly ulong CalculateHash(in T value)
         {
             uint2 hash = xxHash3.Hash64(value.GetUnsafePtr(), value.Length);
             return hash.x | ((ulong)hash.y << 32);

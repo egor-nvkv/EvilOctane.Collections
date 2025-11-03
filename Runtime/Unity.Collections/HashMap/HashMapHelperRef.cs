@@ -415,7 +415,7 @@ namespace Unity.Collections.LowLevel.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal readonly void ResizeExact(int newCapacity, int newBucketCapacity, bool keepOldData)
         {
-            int totalSize = HashMapHelper<TKey>.CalculateDataSize(newCapacity, newBucketCapacity, ptr->SizeOfTValue, out int keyOffset, out int nextOffset, out int bucketOffset);
+            long totalSize = HashMapHelper<TKey>.CalculateDataSize(newCapacity, newBucketCapacity, ptr->SizeOfTValue, out long keyOffset, out long nextOffset, out long bucketOffset);
 
             byte* oldPtr = ptr->Ptr;
             TKey* oldKeys = ptr->Keys;

@@ -1,10 +1,10 @@
 using System.Runtime.CompilerServices;
 using UnityEngine;
-using static Unity.Collections.CollectionHelper;
+using static Unity.Collections.CollectionHelper2;
 
 namespace Unity.Collections.LowLevel.Unsafe
 {
-    public static unsafe class NativeArrayExtensions2
+    public static unsafe partial class NativeArrayExtensions2
     {
         [HideInCallstack]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -26,7 +26,7 @@ namespace Unity.Collections.LowLevel.Unsafe
         public static ref T ElementAt<T>(this NativeArray<T> self, int index)
             where T : unmanaged
         {
-            CheckIndexInRange(index, self.Length);
+            CheckContainerIndexInRange(index, self.Length);
             return ref ((T*)self.GetUnsafePtr())[index];
         }
 
@@ -34,7 +34,7 @@ namespace Unity.Collections.LowLevel.Unsafe
         public static ref T ElementAtReadonly<T>(this NativeArray<T> self, int index)
             where T : unmanaged
         {
-            CheckIndexInRange(index, self.Length);
+            CheckContainerIndexInRange(index, self.Length);
             return ref ((T*)self.GetUnsafeReadOnlyPtr())[index];
         }
 

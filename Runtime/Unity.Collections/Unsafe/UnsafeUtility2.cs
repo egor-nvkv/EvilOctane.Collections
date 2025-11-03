@@ -6,20 +6,18 @@ using static System.Runtime.CompilerServices.Unsafe;
 
 namespace Unity.Collections.LowLevel.Unsafe
 {
-    [GenerateTestsForBurstCompatibility]
     public static unsafe partial class UnsafeUtility2
     {
-        [GenerateTestsForBurstCompatibility(GenericTypeArguments = new[] { typeof(int), typeof(float) })]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool CanBeReinterpretedExactly<TSource, TDestination>()
             where TSource : unmanaged
             where TDestination : unmanaged
         {
-            return sizeof(TSource) == sizeof(TDestination) &&
+            return
+                sizeof(TSource) == sizeof(TDestination) &&
                 UnsafeUtility.AlignOf<TSource>() == UnsafeUtility.AlignOf<TDestination>();
         }
 
-        [GenerateTestsForBurstCompatibility(GenericTypeArguments = new[] { typeof(int), typeof(float) })]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ref TDestination Reinterpret<TSource, TDestination>(ref TSource source)
             where TSource : unmanaged
@@ -27,6 +25,15 @@ namespace Unity.Collections.LowLevel.Unsafe
         {
             CheckReinterpretArgs<TSource, TDestination>();
             return ref As<TSource, TDestination>(ref source);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static TDestination* Reinterpret<TSource, TDestination>(TSource* source)
+            where TSource : unmanaged
+            where TDestination : unmanaged
+        {
+            CheckReinterpretArgs<TSource, TDestination>();
+            return (TDestination*)source;
         }
 
         [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
@@ -63,7 +70,7 @@ namespace Unity.Collections.LowLevel.Unsafe
                 {
                     if (alignDestination > alignSource)
                     {
-                        throw new InvalidOperationException($"Cannot reinterpret to over-aligned type: source = {alignSource}, destination = {alignDestination}.");
+                        throw new InvalidOperationException($"Cannot reinterpret to an over-aligned type: source = {alignSource}, destination = {alignDestination}.");
                     }
                 }
             }

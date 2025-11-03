@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace EvilOctane.Collections.LowLevel.Unsafe
@@ -10,5 +11,11 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
     {
         public int Count;
         public int CapacityCeilGroupSize;
+
+        public readonly bool IsFull
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => SwissTable.IsFull(CapacityCeilGroupSize, Count);
+        }
     }
 }

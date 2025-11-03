@@ -3,7 +3,6 @@ using System.Runtime.CompilerServices;
 
 namespace Unity.Collections.LowLevel.Unsafe
 {
-    [GenerateTestsForBurstCompatibility(GenericTypeArguments = new[] { typeof(int) })]
     public readonly unsafe struct Pointer<T>
         where T : unmanaged
     {
@@ -22,6 +21,11 @@ namespace Unity.Collections.LowLevel.Unsafe
         public Pointer(T* value)
         {
             Ptr = value;
+        }
+
+        public override readonly string ToString()
+        {
+            return Ptr == null ? "null" : Ptr->ToString();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

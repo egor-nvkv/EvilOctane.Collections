@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using Unity.Burst.CompilerServices;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -32,6 +31,12 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
         internal int capacityCeilGroupSize;
         internal AllocatorManager.AllocatorHandle allocator;
         internal int occupiedCount;
+
+        public static int MaxCapacity
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => SwissTable.MaxCapacity;
+        }
 
         public readonly bool IsCreated
         {
@@ -163,15 +168,31 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
         {
             CheckContainerCapacity(capacity);
 
-            int slack = capacity - capacityCeilGroupSize;
+            int tombstoneCount = occupiedCount - count;
+            int requiredCapacity = capacity + tombstoneCount;
 
-            if (slack <= 0)
+            if (!SwissTable.IsFull(capacityCeilGroupSize, requiredCapacity))
             {
                 // Enough capacity
                 return;
             }
 
-            Grow(slack, keepOldData);
+            Rehash(capacity, keepOldData: keepOldData);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void EnsureSlack(int slack)
+        {
+            CheckContainerElementCount(slack);
+
+            if (!SwissTable.IsFull(capacityCeilGroupSize, occupiedCount + slack))
+            {
+                // Enough slack
+                return;
+            }
+
+            int requiredCapacity = count + slack;
+            Rehash(requiredCapacity, keepOldData: true);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -194,12 +215,7 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
 
         public bool Add(TKey key)
         {
-            if (Hint.Unlikely(IsFull))
-            {
-                // Resize
-                Grow(1, keepOldData: true);
-            }
-
+            EnsureSlack(1);
             return AddNoResize(key);
         }
 
@@ -241,19 +257,25 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
             return true;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void Grow(int slack, bool keepOldData)
-        {
-            Rehash(capacityCeilGroupSize + slack, keepOldData);
-        }
-
-        private void Rehash(int capacity, bool keepOldData)
+        private void Rehash(int requiredCapacity, bool keepOldData)
         {
             byte* oldBuffer = buffer;
             int oldCapacity = capacityCeilGroupSize;
 
-            capacity = math.max(capacity, oldCapacity + (oldCapacity / 2));
-            this = new UnsafeSwissSet<TKey, THasher>(capacity, allocator);
+            int newCapacity;
+
+            if (requiredCapacity <= oldCapacity)
+            {
+                // Shrink
+                newCapacity = math.max(requiredCapacity, count);
+            }
+            else
+            {
+                // Grow
+                newCapacity = math.max(requiredCapacity, oldCapacity + (oldCapacity / 2));
+            }
+
+            this = new UnsafeSwissSet<TKey, THasher>(newCapacity, allocator);
 
             if (keepOldData)
             {

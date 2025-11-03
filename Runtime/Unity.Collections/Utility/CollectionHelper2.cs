@@ -6,19 +6,18 @@ using UnityEngine;
 
 namespace Unity.Collections
 {
-    [GenerateTestsForBurstCompatibility]
     public static unsafe partial class CollectionHelper2
     {
         [DebuggerStepThrough, HideInCallstack]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static nint Align(nint size, nint alignmentPowerOfTwo)
+        public static nint Align(nint size, int alignmentPowerOfTwo)
         {
             return (nint)CollectionHelper.Align((ulong)size, (ulong)alignmentPowerOfTwo);
         }
 
         [DebuggerStepThrough, HideInCallstack]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static nuint Align(nuint size, nuint alignmentPowerOfTwo)
+        public static nuint Align(nuint size, uint alignmentPowerOfTwo)
         {
             return (nuint)CollectionHelper.Align(size, alignmentPowerOfTwo);
         }
@@ -33,7 +32,7 @@ namespace Unity.Collections
         [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
         [Conditional("UNITY_DOTS_DEBUG")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void CheckContainerLength(int length)
+        public static void CheckContainerLength(nint length)
         {
             if (Hint.Unlikely(length < 0))
             {
@@ -44,7 +43,7 @@ namespace Unity.Collections
         [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
         [Conditional("UNITY_DOTS_DEBUG")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void CheckContainerCapacity(int capacity)
+        public static void CheckContainerCapacity(nint capacity)
         {
             if (Hint.Unlikely(capacity < 0))
             {
@@ -55,7 +54,7 @@ namespace Unity.Collections
         [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
         [Conditional("UNITY_DOTS_DEBUG")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void CheckContainerElementCount(int count)
+        public static void CheckContainerElementCount(nint count)
         {
             if (Hint.Unlikely(count < 0))
             {
@@ -66,7 +65,7 @@ namespace Unity.Collections
         [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
         [Conditional("UNITY_DOTS_DEBUG")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void CheckContainerElementSize(int elementSize)
+        public static void CheckContainerElementSize(nint elementSize)
         {
             if (Hint.Unlikely(elementSize <= 0))
             {
@@ -76,17 +75,19 @@ namespace Unity.Collections
 
         [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
         [Conditional("UNITY_DOTS_DEBUG")]
-        [DebuggerStepThrough, HideInCallstack]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void CheckContainerIndexInRange(int index, int length)
+        public static void CheckContainerIndexInRange(nint index, nint length)
         {
-            CollectionHelper.CheckIndexInRange(index: index, length: length);
+            if ((nuint)index >= (nuint)length)
+            {
+                throw new IndexOutOfRangeException($"Index = {index} is out of range in container of Length = {length}.");
+            }
         }
 
         [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
         [Conditional("UNITY_DOTS_DEBUG")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void CheckAddNoResizeHasEnoughCapacity(int length, int capacity, int count)
+        public static void CheckAddNoResizeHasEnoughCapacity(nint length, nint capacity, nint count)
         {
             CheckContainerLength(length);
             CheckContainerCapacity(capacity);
@@ -94,7 +95,7 @@ namespace Unity.Collections
 
             if (Hint.Unlikely(length + count > capacity))
             {
-                throw new InvalidOperationException($"AddNoResize assumes that capacity is sufficient (Current length = {length}, Capacity = {capacity}, Count to add = {count}).");
+                throw new InvalidOperationException($"AddNoResize assumes that capacity is sufficient (Length = {length}, Capacity = {capacity}, Count = {count}).");
             }
         }
     }

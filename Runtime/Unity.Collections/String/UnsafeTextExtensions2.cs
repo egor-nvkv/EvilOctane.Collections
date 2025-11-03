@@ -5,7 +5,7 @@ using static Unity.Collections.LowLevel.Unsafe.UnsafeUtility2;
 
 namespace Unity.Collections.LowLevel.Unsafe
 {
-    public static unsafe class UnsafeTextExtensions2
+    public static unsafe partial class UnsafeTextExtensions2
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ref UnsafeList<byte> AsUnsafeList(this ref UnsafeText self)

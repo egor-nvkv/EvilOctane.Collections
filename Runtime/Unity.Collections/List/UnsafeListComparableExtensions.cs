@@ -1,24 +1,16 @@
 using System;
 using System.Runtime.CompilerServices;
-using UnityEngine.Assertions;
+using static Unity.Collections.CollectionHelper2;
 
 namespace Unity.Collections.LowLevel.Unsafe
 {
-    public static unsafe class UnsafeListComparableExtensions
+    public static unsafe partial class UnsafeListComparableExtensions
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int InsertedOrderedNoResize<T>(this ref UnsafeList<T> self, T value)
             where T : unmanaged, IComparable<T>
         {
-#if ENABLE_UNITY_COLLECTIONS_CHECKS || UNITY_DOTS_DEBUG
-            if (self.Capacity <= self.Length)
-            {
-                // Throws
-                self.AddNoResize(default);
-            }
-#endif
-
-            Assert.IsTrue(self.Capacity > self.Length);
+            CheckAddNoResizeHasEnoughCapacity(self.Length, self.Capacity, 1);
 
             int oldLength = self.m_length;
             ++self.m_length;

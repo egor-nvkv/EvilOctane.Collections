@@ -31,7 +31,7 @@ namespace EvilOctane.Collections
 
         public override readonly string ToString()
         {
-            return Pointer.IsNull ? "null" : Pointer.Ref.ToString();
+            return Pointer.ToString();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

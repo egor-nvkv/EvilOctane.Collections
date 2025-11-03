@@ -21,6 +21,8 @@ namespace Unity.Collections.LowLevel.Unsafe
     public readonly unsafe struct UnsafeSpan<T> : INativeList<T>, IEnumerable<T>
         where T : unmanaged
     {
+        public const int MaxCapacity = int.MaxValue;
+
         [NativeDisableUnsafePtrRestriction]
         public readonly T* Ptr;
         public readonly int LengthField;
@@ -181,12 +183,6 @@ namespace Unity.Collections.LowLevel.Unsafe
             NativeArray<T> array = CreateNativeArray<T>(Length, allocator, NativeArrayOptions.UninitializedMemory);
             array.AsSpanRW().CopyFrom(this);
             return array;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly ByteSpan AsByteSpan()
-        {
-            return new ByteSpan((byte*)Ptr, Length * sizeof(T));
         }
 
         [ExcludeFromBurstCompatTesting("Returns managed object")]

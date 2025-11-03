@@ -28,7 +28,7 @@ namespace EvilOctane.Collections.Tests
         [MonoPInvokeCallback(typeof(XXH3Delegate))]
         private static void Create_Burst(ref IntIntXXH3Table table)
         {
-            table = new(Allocator.TempJob);
+            table = new(elementCount / 4, Allocator.TempJob);
         }
 
         [BurstCompile]
@@ -162,7 +162,7 @@ namespace EvilOctane.Collections.Tests
         [Test]
         public void TestAddRemoveBadHash()
         {
-            IntIntIdentityTable table = new(Allocator.TempJob);
+            IntIntIdentityTable table = new(elementCount, Allocator.TempJob);
 
             for (int i = 0; i != elementCount; ++i)
             {
@@ -183,7 +183,7 @@ namespace EvilOctane.Collections.Tests
 
     public struct IdentityHasher : IHasher64<int>
     {
-        public readonly ulong CalculateHash(int value)
+        public readonly ulong CalculateHash(in int value)
         {
             return (ulong)value;
         }

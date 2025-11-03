@@ -19,6 +19,12 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
         where TValue : unmanaged
         where THasher : unmanaged, IHasher64<TKey>
     {
+        public static int MaxCapacity
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => SwissTable.MaxCapacity;
+        }
+
         public static int BufferAlignment
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]

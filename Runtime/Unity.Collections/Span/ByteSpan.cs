@@ -7,6 +7,7 @@ using Unity.Mathematics;
 using static Unity.Collections.CollectionHelper;
 using static Unity.Collections.CollectionHelper2;
 using static Unity.Collections.LowLevel.Unsafe.UnsafeUtility2;
+using SystemUnsafe = System.Runtime.CompilerServices.Unsafe;
 
 namespace Unity.Collections.LowLevel.Unsafe
 {
@@ -21,6 +22,8 @@ namespace Unity.Collections.LowLevel.Unsafe
         IComparable<ByteSpan>,
         IEquatable<ByteSpan>
     {
+        public const int MaxCapacity = int.MaxValue;
+
         [NativeDisableUnsafePtrRestriction]
         public readonly byte* Ptr;
         public readonly int LengthField;
@@ -87,6 +90,17 @@ namespace Unity.Collections.LowLevel.Unsafe
             if (ptr == null && (uint)length > 0)
             {
                 throw new ArgumentException("Ptr cannot be null with non-zero length.");
+            }
+        }
+
+        [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
+        [Conditional("UNITY_DOTS_DEBUG")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void CheckCopyLengths(int srcLength, int dstLength)
+        {
+            if (srcLength != dstLength)
+            {
+                throw new ArgumentException("Source and Destination length must be the same.");
             }
         }
 
@@ -210,7 +224,7 @@ namespace Unity.Collections.LowLevel.Unsafe
         [ExcludeFromBurstCompatTesting("Returns managed string")]
         public override readonly string ToString()
         {
-            return new string((sbyte*)Ptr, startIndex: 0, length: LengthField);
+            return Ptr == null ? string.Empty : new string((sbyte*)Ptr, startIndex: 0, length: LengthField);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -229,6 +243,23 @@ namespace Unity.Collections.LowLevel.Unsafe
             FixedStringMethods.CheckSubstringInRange(LengthField, startIndex, resultLength);
 
             return new ByteSpan(Ptr + startIndex, resultLength);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly void CopyFrom(ByteSpan other)
+        {
+            CheckCopyLengths(srcLength: other.LengthField, dstLength: LengthField);
+
+            if (Constant.IsConstantExpression(true))
+            {
+                // Burst
+                UnsafeUtility.MemCpy(Ptr, other.Ptr, Length);
+            }
+            else
+            {
+                // No Burst
+                SystemUnsafe.CopyBlock(Ptr, other.Ptr, (uint)Length);
+            }
         }
 
         [BurstDiscard]

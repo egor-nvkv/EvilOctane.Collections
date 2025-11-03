@@ -4,7 +4,7 @@ using static System.Runtime.CompilerServices.Unsafe;
 
 namespace Unity.Collections
 {
-    public static unsafe class NativeTextExtensions
+    public static unsafe partial class NativeTextExtensions
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static UnsafeText* GetUnsafeText(this NativeText self)

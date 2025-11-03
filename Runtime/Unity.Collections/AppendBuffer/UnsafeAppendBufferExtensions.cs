@@ -6,11 +6,13 @@ using static Unity.Collections.LowLevel.Unsafe.UnsafeUtility2;
 
 namespace Unity.Collections.LowLevel.Unsafe
 {
-    public static unsafe class UnsafeAppendBufferExtensions
+    public static unsafe partial class UnsafeAppendBufferExtensions
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void EnsureCapacity(this ref UnsafeAppendBuffer self, int capacity, bool keepOldData = true)
         {
+            CheckContainerCapacity(capacity);
+
             if (capacity > self.Capacity)
             {
                 ref UntypedUnsafeListMutable casted = ref Reinterpret<UnsafeAppendBuffer, UntypedUnsafeListMutable>(ref self);
@@ -29,6 +31,7 @@ namespace Unity.Collections.LowLevel.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void EnsureSlack(this ref UnsafeAppendBuffer self, int slack)
         {
+            CheckContainerElementCount(slack);
             self.EnsureCapacity(self.Length + slack);
         }
 
@@ -63,7 +66,7 @@ namespace Unity.Collections.LowLevel.Unsafe
             where T : unmanaged
         {
             CheckContainerElementCount(offset);
-            CheckIndexInRange(offset + sizeof(T) - 1, self.Length);
+            CheckContainerIndexInRange(offset + sizeof(T) - 1, self.Length);
 
             byte* destination = self.Ptr + offset;
             WriteUnaligned(destination, value);
@@ -89,7 +92,7 @@ namespace Unity.Collections.LowLevel.Unsafe
         public static void Skip(this ref UnsafeAppendBuffer.Reader self, int byteCount)
         {
             CheckContainerElementCount(byteCount);
-            CheckIndexInRange(self.Offset + byteCount - 1, self.Size);
+            CheckContainerIndexInRange(self.Offset + byteCount - 1, self.Size);
             self.Offset += byteCount;
         }
 
@@ -121,22 +124,21 @@ namespace Unity.Collections.LowLevel.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void ReadAddToNoResize<T>(this ref UnsafeAppendBuffer.Reader self, ref UnsafeAppendBuffer destination)
-            where T : unmanaged
-        {
-            ReadAddToNoResizeUnchecked(ref self, ref destination, sizeof(T));
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void ReadAddToNoResizeUnchecked(this ref UnsafeAppendBuffer.Reader self, ref UnsafeAppendBuffer destination, int size)
         {
-            void* ptr = self.ReadNext(size);
+            CheckContainerElementSize(size);
+            CheckContainerIndexInRange(self.Offset + size - 1, self.Size);
+
+            void* ptr = self.Ptr + self.Offset;
+            self.Offset += size;
+
             AddNoResize(ref destination, ptr, size);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void AddNoResize(ref UnsafeAppendBuffer unsafeAppendBuffer, void* ptr, int size)
         {
+            CheckContainerElementSize(size);
             CheckAddNoResizeHasEnoughCapacity(unsafeAppendBuffer.Length, unsafeAppendBuffer.Capacity, size);
 
             int oldLength = unsafeAppendBuffer.Length;
@@ -148,7 +150,8 @@ namespace Unity.Collections.LowLevel.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void Overwrite(UnsafeAppendBuffer unsafeAppendBuffer, int offset, void* ptr, int size)
         {
-            CheckIndexInRange(offset + size - 1, unsafeAppendBuffer.Length);
+            CheckContainerElementSize(size);
+            CheckContainerIndexInRange(offset + size - 1, unsafeAppendBuffer.Length);
             UnsafeUtility.MemCpy(unsafeAppendBuffer.Ptr + offset, ptr, size);
         }
     }

@@ -34,6 +34,12 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
         internal AllocatorManager.AllocatorHandle allocator;
         internal int occupiedCount;
 
+        public static int MaxCapacity
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => SwissTable.MaxCapacity;
+        }
+
         public readonly bool IsCreated
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -180,19 +186,48 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly UnsafeList<TKey> GetKeyValueLists(AllocatorManager.AllocatorHandle allocator, out UnsafeList<TValue> valueList)
+        {
+            UnsafeList<TKey> keyList = UnsafeListExtensions2.Create<TKey>(count, allocator);
+            keyList.m_length = count;
+
+            valueList = UnsafeListExtensions2.Create<TValue>(count, allocator);
+            valueList.m_length = count;
+
+            SwissTable<TKey, TValue>.CopyKeysAndValuesTo(buffer, capacityCeilGroupSize, keyList.Ptr, valueList.Ptr);
+            return keyList;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void EnsureCapacity(int capacity, bool keepOldData = true)
         {
             CheckContainerCapacity(capacity);
 
-            int slack = capacity - capacityCeilGroupSize;
+            int tombstoneCount = occupiedCount - count;
+            int requiredCapacity = capacity + tombstoneCount;
 
-            if (slack <= 0)
+            if (!SwissTable.IsFull(capacityCeilGroupSize, requiredCapacity))
             {
                 // Enough capacity
                 return;
             }
 
-            Grow(slack, keepOldData);
+            Rehash(capacity, keepOldData: keepOldData);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void EnsureSlack(int slack)
+        {
+            CheckContainerElementCount(slack);
+
+            if (!SwissTable.IsFull(capacityCeilGroupSize, occupiedCount + slack))
+            {
+                // Enough slack
+                return;
+            }
+
+            int requiredCapacity = count + slack;
+            Rehash(requiredCapacity, keepOldData: true);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -215,12 +250,9 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
 
         public ref TValue GetOrAdd(TKey key, out bool added)
         {
-            if (Hint.Unlikely(IsFull))
-            {
-                // Preemptive resize
-                // Better than calling Find twice
-                Grow(1, keepOldData: true);
-            }
+            // Preemptive resize
+            // Better than calling Find twice
+            EnsureSlack(1);
 
             return ref GetOrAddNoResize(key, out added);
         }
@@ -247,12 +279,7 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
 
         public ref TValue Add(TKey key)
         {
-            if (Hint.Unlikely(IsFull))
-            {
-                // Resize
-                Grow(1, keepOldData: true);
-            }
-
+            EnsureSlack(1);
             return ref AddNoResize(key);
         }
 
@@ -285,19 +312,25 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
             return true;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void Grow(int slack, bool keepOldData)
-        {
-            Rehash(capacityCeilGroupSize + slack, keepOldData);
-        }
-
-        private void Rehash(int capacity, bool keepOldData)
+        private void Rehash(int requiredCapacity, bool keepOldData)
         {
             byte* oldBuffer = buffer;
             int oldCapacity = capacityCeilGroupSize;
 
-            capacity = math.max(capacity, oldCapacity + (oldCapacity / 2));
-            this = new UnsafeSwissTable<TKey, TValue, THasher>(capacity, allocator);
+            int newCapacity;
+
+            if (requiredCapacity <= oldCapacity)
+            {
+                // Shrink
+                newCapacity = math.max(requiredCapacity, count);
+            }
+            else
+            {
+                // Grow
+                newCapacity = math.max(requiredCapacity, oldCapacity + (oldCapacity / 2));
+            }
+
+            this = new UnsafeSwissTable<TKey, TValue, THasher>(newCapacity, allocator);
 
             if (keepOldData)
             {
