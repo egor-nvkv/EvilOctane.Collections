@@ -1,10 +1,8 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using Unity.Burst.CompilerServices;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
 using static EvilOctane.Collections.SwissTable;
@@ -55,26 +53,30 @@ namespace EvilOctane.Collections
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static TKey* GetKeyGroupPtr(byte* buffer, int capacityCeilGroupSize)
+        public static nint GetKeyGroupOffset(int capacityCeilGroupSize)
         {
             CheckCapacity(capacityCeilGroupSize);
-
-            byte* ptr = buffer + capacityCeilGroupSize;
-            return (TKey*)AlignPointer(ptr, KeyGroupAlignment);
+            return Align(GetAllocationCapacity(capacityCeilGroupSize), KeyGroupAlignment);
         }
 
-        public static int Find<THasher>(byte* buffer, int capacityCeilGroupSize, TKey key, out byte h2, out bool exists)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static TKey* GetKeyGroupPtr(byte* buffer, int capacityCeilGroupSize)
+        {
+            return (TKey*)(buffer + GetKeyGroupOffset(capacityCeilGroupSize));
+        }
+
+        public static int Find<THasher>(byte* buffer, int capacityCeilGroupSize, TKey key, out byte h2, out int groupOffset, out bool exists)
             where THasher : unmanaged, IHasher64<TKey>
         {
             TKey* groupPtr = GetKeyGroupPtr(buffer, capacityCeilGroupSize);
-            return Find<TKey, THasher>(sizeof(TKey), buffer, (byte*)groupPtr, capacityCeilGroupSize, key, true, out h2, out exists);
+            return Find<TKey, THasher>(sizeof(TKey), buffer, (byte*)groupPtr, capacityCeilGroupSize, key, true, out h2, out groupOffset, out exists);
         }
 
-        public static int FindEmpty<THasher>(byte* buffer, int capacityCeilGroupSize, TKey key, out byte h2)
+        public static int FindEmpty<THasher>(byte* buffer, int capacityCeilGroupSize, TKey key, out byte h2, out int groupOffset)
             where THasher : unmanaged, IHasher64<TKey>
         {
             TKey* groupPtr = GetKeyGroupPtr(buffer, capacityCeilGroupSize);
-            return Find<TKey, THasher>(sizeof(TKey), buffer, (byte*)groupPtr, capacityCeilGroupSize, key, false, out h2, out _);
+            return Find<TKey, THasher>(sizeof(TKey), buffer, (byte*)groupPtr, capacityCeilGroupSize, key, false, out h2, out groupOffset, out _);
         }
 
         public static void Insert(byte* buffer, int capacityCeilGroupSize, int index, TKey key, byte h2)
@@ -84,7 +86,7 @@ namespace EvilOctane.Collections
             CheckContainerIndexInRange(index, capacityCeilGroupSize);
 
             // Control
-            buffer[index] = h2;
+            SetControl(buffer, capacityCeilGroupSize, index, h2);
 
             // Key
             TKey* groupPtr = GetKeyGroupPtr(buffer, capacityCeilGroupSize);
@@ -99,20 +101,6 @@ namespace EvilOctane.Collections
             while (enumerator.MoveNext())
             {
                 keyPtr[index++] = enumerator.Current.Ref;
-            }
-        }
-
-        [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
-        [Conditional("UNITY_DOTS_DEBUG")]
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void CheckKeyNotAlreadyAdded<THasher>(byte* buffer, int capacityCeilGroupSize, TKey key)
-            where THasher : unmanaged, IHasher64<TKey>
-        {
-            _ = Find<THasher>(buffer, capacityCeilGroupSize, key, out _, out bool exists);
-
-            if (Hint.Unlikely(exists))
-            {
-                ThrowKeyAlreadyAdded();
             }
         }
 

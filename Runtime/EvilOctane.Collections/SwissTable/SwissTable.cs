@@ -44,7 +44,7 @@ namespace EvilOctane.Collections
         public static int MaxCapacity
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => (int)(Align((long)int.MaxValue, GroupSize) - GroupSize);
+            get => (int)(Align((long)int.MaxValue, GroupSize) - (GroupSize * 2));
         }
 
         public static int ControlAlignment
@@ -66,13 +66,6 @@ namespace EvilOctane.Collections
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static uint H1Compressed(ulong h1)
-        {
-            uint hash = (uint)(h1 >> 32) ^ (uint)h1;
-            return hash;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static uint GetEmptyMask(byte* buffer, int index)
         {
             return GetH2Mask(buffer, index, ControlEmpty);
@@ -88,7 +81,7 @@ namespace EvilOctane.Collections
 
             if (IsSse42Supported)
             {
-                v128 control = load_si128(controlPtr);
+                v128 control = loadu_si128(controlPtr);
                 uint notFullMask = (uint)movemask_epi8(control);
                 return notFullMask ^ 0xffff;
             }
@@ -130,7 +123,7 @@ namespace EvilOctane.Collections
 
             if (IsSse42Supported)
             {
-                v128 control = load_si128(controlPtr);
+                v128 control = loadu_si128(controlPtr);
                 v128 eqH2 = cmpeq_epi8(control, new v128(h2));
                 return (uint)movemask_epi8(eqH2);
             }
@@ -163,7 +156,7 @@ namespace EvilOctane.Collections
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int GetCapacityCeilGroupSize(int capacity)
+        public static int GetCapacityCeilGroupSize(int capacity, out int allocationCapacity)
         {
             CheckContainerCapacity(capacity);
 
@@ -171,9 +164,16 @@ namespace EvilOctane.Collections
             int capacityAdjusted = (int)math.ceil(capacity * MaxLoadFactorRcp);
 
             int capacityCeilGroupSize = Align(capacityAdjusted, GroupSize);
-            CheckCapacity(capacityCeilGroupSize);
+            allocationCapacity = GetAllocationCapacity(capacityCeilGroupSize);
 
             return capacityCeilGroupSize;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int GetAllocationCapacity(int capacityCeilGroupSize)
+        {
+            CheckCapacity(capacityCeilGroupSize);
+            return capacityCeilGroupSize + GroupSize;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -187,7 +187,21 @@ namespace EvilOctane.Collections
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int Find<TKey, THasher>(int keyStride, byte* buffer, byte* groupPtr, int capacityCeilGroupSize, TKey key, bool checkExists, out byte h2, out bool exists)
+        public static void SetControl(byte* buffer, int capacityCeilGroupSize, int index, byte control)
+        {
+            CheckIsAligned(buffer, ControlAlignment);
+            CheckCapacity(capacityCeilGroupSize);
+            CheckContainerIndexInRange(index, capacityCeilGroupSize);
+
+            buffer[index] = control;
+
+            // Replicate first group
+            int replicationIndex = index < GroupSize ? capacityCeilGroupSize + index : index;
+            buffer[replicationIndex] = control;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int Find<TKey, THasher>(int keyStride, byte* buffer, byte* groupPtr, int capacityCeilGroupSize, TKey key, bool checkExists, out byte h2, out int groupOffset, out bool exists)
             where TKey : unmanaged, IEquatable<TKey>
             where THasher : unmanaged, IHasher64<TKey>
         {
@@ -199,23 +213,26 @@ namespace EvilOctane.Collections
             ulong h1 = H1(hash);
             h2 = H2(hash);
 
-            int groupCount = capacityCeilGroupSize / GroupSize;
-            int groupIndex = (int)(H1Compressed(h1) % (uint)groupCount);
+            groupOffset = (int)(h1 % (ulong)capacityCeilGroupSize);
 
-            for (; ; groupIndex = (groupIndex + 1) % groupCount)
+#if ENABLE_UNITY_COLLECTIONS_CHECKS || UNITY_DOTS_DEBUG
+            int initialGroupOffset = groupOffset;
+#endif
+
+            for (; ; )
             {
-                int startIndex = groupIndex * GroupSize;
-
                 if (checkExists)
                 {
-                    uint h2Mask = GetH2Mask(buffer, startIndex, h2);
+                    uint h2Mask = GetH2Mask(buffer, groupOffset, h2);
 
                     // Probe for h2 matches
 
                     while (h2Mask != 0x0)
                     {
-                        int index = startIndex + math.tzcnt(h2Mask);
-                        ref TKey keyRO = ref *(TKey*)(groupPtr + (index * keyStride));
+                        int indexExtended = groupOffset + math.tzcnt(h2Mask);
+                        int index = indexExtended % capacityCeilGroupSize;
+
+                        ref TKey keyRO = ref *(TKey*)(groupPtr + ((nint)index * keyStride));
 
                         if (Hint.Likely(key.Equals(keyRO)))
                         {
@@ -238,39 +255,57 @@ namespace EvilOctane.Collections
 
                 // Probe for empty
 
-                uint emptyMask = GetEmptyMask(buffer, startIndex);
+                uint emptyMask = GetEmptyMask(buffer, groupOffset);
 
                 if (Hint.Likely(emptyMask != 0x0))
                 {
                     // Empty
                     exists = false;
-                    return startIndex + math.tzcnt(emptyMask);
+
+                    int indexExtended = groupOffset + math.tzcnt(emptyMask);
+                    return indexExtended % capacityCeilGroupSize;
                 }
+
+                groupOffset = (groupOffset + GroupSize) % capacityCeilGroupSize;
+
+#if ENABLE_UNITY_COLLECTIONS_CHECKS || UNITY_DOTS_DEBUG
+                if (Hint.Unlikely(groupOffset == initialGroupOffset))
+                {
+                    throw new InvalidOperationException("Table's control buffer is in invalid state: find wrapped around.");
+                }
+#endif
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void Delete(byte* buffer, int index, ref int occupiedCount)
+        public static void Delete(byte* buffer, int capacityCeilGroupSize, int groupOffset, int index, bool tryReclaim, out bool reclaimed)
         {
             CheckIsAligned(buffer, ControlAlignment);
-            CheckContainerIndexInRange(index, int.MaxValue);
+            CheckCapacity(capacityCeilGroupSize);
+            CheckContainerIndexInRange(groupOffset, capacityCeilGroupSize);
+            CheckContainerIndexInRange(index, capacityCeilGroupSize);
 
-            int groupIndex = index / GroupSize;
-            int startIndex = groupIndex * GroupSize;
-
-            uint emptyMask = GetEmptyMask(buffer, startIndex);
-
-            if (Hint.Likely(emptyMask != 0x0))
+            if (tryReclaim)
             {
-                // Reclaim
-                buffer[index] = ControlEmpty;
-                --occupiedCount;
+                throw new NotImplementedException("Deletion with reclaim in not yet supported.");
             }
-            else
-            {
-                // Put tombstone to prevent probe termination
-                buffer[index] = ControlDeleted;
-            }
+
+            reclaimed = false;
+
+            // Put tombstone to prevent probe termination
+            byte control = ControlDeleted;
+
+            SetControl(buffer, capacityCeilGroupSize, index, control);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void Clear(byte* buffer, int capacityCeilGroupSize)
+        {
+            CheckIsAligned(buffer, ControlAlignment);
+            CheckCapacity(capacityCeilGroupSize);
+
+            int allocatedGroupCount = GetAllocationCapacity(capacityCeilGroupSize) / GroupSize;
+            new UnsafeSpan<v128>((v128*)buffer, allocatedGroupCount).Fill(new v128(ControlEmpty));
         }
 
         [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
@@ -288,6 +323,11 @@ namespace EvilOctane.Collections
             if (Hint.Unlikely(capacityCeilGroupSize % GroupSize != 0))
             {
                 throw new ArgumentException($"Capacity must be a multiple of group size ({GroupSize}).");
+            }
+
+            if (Hint.Unlikely(capacityCeilGroupSize > MaxCapacity))
+            {
+                throw new ArgumentException($"Max capacity ({MaxCapacity}) exceeded.");
             }
         }
 
@@ -456,26 +496,30 @@ namespace EvilOctane.Collections
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static KeyValue<TKey, TValue>* GetKeyValueGroupPtr(byte* buffer, int capacityCeilGroupSize)
+        public static nint GetKeyValueGroupOffset(int capacityCeilGroupSize)
         {
             CheckCapacity(capacityCeilGroupSize);
-
-            byte* ptr = buffer + capacityCeilGroupSize;
-            return (KeyValue<TKey, TValue>*)AlignPointer(ptr, KeyValueGroupAlignment);
+            return Align(GetAllocationCapacity(capacityCeilGroupSize), KeyValueGroupAlignment);
         }
 
-        public static int Find<THasher>(byte* buffer, int capacityCeilGroupSize, TKey key, out byte h2, out bool exists)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static KeyValue<TKey, TValue>* GetKeyValueGroupPtr(byte* buffer, int capacityCeilGroupSize)
+        {
+            return (KeyValue<TKey, TValue>*)(buffer + GetKeyValueGroupOffset(capacityCeilGroupSize));
+        }
+
+        public static int Find<THasher>(byte* buffer, int capacityCeilGroupSize, TKey key, out byte h2, out int groupOffset, out bool exists)
             where THasher : unmanaged, IHasher64<TKey>
         {
             KeyValue<TKey, TValue>* groupPtr = GetKeyValueGroupPtr(buffer, capacityCeilGroupSize);
-            return Find<TKey, THasher>(sizeof(KeyValue<TKey, TValue>), buffer, (byte*)groupPtr, capacityCeilGroupSize, key, true, out h2, out exists);
+            return Find<TKey, THasher>(sizeof(KeyValue<TKey, TValue>), buffer, (byte*)groupPtr, capacityCeilGroupSize, key, true, out h2, out groupOffset, out exists);
         }
 
-        public static int FindEmpty<THasher>(byte* buffer, int capacityCeilGroupSize, TKey key, out byte h2)
+        public static int FindEmpty<THasher>(byte* buffer, int capacityCeilGroupSize, TKey key, out byte h2, out int groupOffset)
             where THasher : unmanaged, IHasher64<TKey>
         {
             KeyValue<TKey, TValue>* groupPtr = GetKeyValueGroupPtr(buffer, capacityCeilGroupSize);
-            return Find<TKey, THasher>(sizeof(KeyValue<TKey, TValue>), buffer, (byte*)groupPtr, capacityCeilGroupSize, key, false, out h2, out _);
+            return Find<TKey, THasher>(sizeof(KeyValue<TKey, TValue>), buffer, (byte*)groupPtr, capacityCeilGroupSize, key, false, out h2, out groupOffset, out _);
         }
 
         public static ref TValue Insert(byte* buffer, int capacityCeilGroupSize, int index, TKey key, byte h2)
@@ -485,7 +529,7 @@ namespace EvilOctane.Collections
             CheckContainerIndexInRange(index, capacityCeilGroupSize);
 
             // Control
-            buffer[index] = h2;
+            SetControl(buffer, capacityCeilGroupSize, index, h2);
 
             // Key Value
             KeyValue<TKey, TValue>* groupPtr = GetKeyValueGroupPtr(buffer, capacityCeilGroupSize);
@@ -539,7 +583,7 @@ namespace EvilOctane.Collections
         public static void CheckKeyNotAlreadyAdded<THasher>(byte* buffer, int capacityCeilGroupSize, TKey key)
             where THasher : unmanaged, IHasher64<TKey>
         {
-            _ = Find<THasher>(buffer, capacityCeilGroupSize, key, out _, out bool exists);
+            _ = Find<THasher>(buffer, capacityCeilGroupSize, key, out _, out _, out bool exists);
 
             if (Hint.Unlikely(exists))
             {

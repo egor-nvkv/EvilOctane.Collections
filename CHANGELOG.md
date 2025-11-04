@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.13.1] - 2025-11-04
+
+* SwissTable sliding window groups implemented
+
 ## [0.13.0] - 2025-11-03
 
 * Collection sizes as nint

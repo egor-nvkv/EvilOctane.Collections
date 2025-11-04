@@ -80,7 +80,7 @@ namespace Unity.Collections
         {
             if ((nuint)index >= (nuint)length)
             {
-                throw new IndexOutOfRangeException($"Index = {index} is out of range in container of Length = {length}.");
+                throw new IndexOutOfRangeException($"Index = {(long)index} is out of range in container of Length = {(long)length}.");
             }
         }
 
@@ -95,7 +95,7 @@ namespace Unity.Collections
 
             if (Hint.Unlikely(length + count > capacity))
             {
-                throw new InvalidOperationException($"AddNoResize assumes that capacity is sufficient (Length = {length}, Capacity = {capacity}, Count = {count}).");
+                throw new InvalidOperationException($"AddNoResize assumes that capacity is sufficient (Length = {(long)length}, Capacity = {(long)capacity}, Count = {(long)count}).");
             }
         }
     }

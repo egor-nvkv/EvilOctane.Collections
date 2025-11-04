@@ -1,15 +1,12 @@
 using System;
 using System.Runtime.CompilerServices;
-using Unity.Burst.Intrinsics;
 using Unity.Collections;
-using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
 using static EvilOctane.Collections.SwissTable;
 using static System.Runtime.CompilerServices.Unsafe;
 using static Unity.Collections.CollectionHelper;
 using static Unity.Collections.CollectionHelper2;
 using static Unity.Collections.LowLevel.Unsafe.UnsafeUtility;
-using static Unity.Collections.LowLevel.Unsafe.UnsafeUtility2;
 
 namespace EvilOctane.Collections.LowLevel.Unsafe
 {
@@ -40,10 +37,10 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static nint GetAllocationSize(int capacity, out int capacityCeilGroupSize)
         {
-            capacityCeilGroupSize = GetCapacityCeilGroupSize(capacity);
+            capacityCeilGroupSize = GetCapacityCeilGroupSize(capacity, out _);
             int groupCount = capacityCeilGroupSize / GroupSize;
 
-            nint groupOffset = GetGroupOffset(capacityCeilGroupSize);
+            nint groupOffset = (nint)SwissTable<TKey, TValue>.GetKeyValueGroupPtr((byte*)ControlOffset, capacityCeilGroupSize);
             return groupOffset + ((nint)groupCount * sizeof(KeyValue<TKey, TValue>) * GroupSize);
         }
 
@@ -56,19 +53,16 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
             header->CapacityCeilGroupSize = capacityCeilGroupSize;
 
             byte* buffer = (byte*)header + ControlOffset;
-            CheckIsAligned(buffer, ControlAlignment);
-
-            int groupCount = capacityCeilGroupSize / GroupSize;
-            new UnsafeSpan<v128>((v128*)buffer, groupCount).Fill(new v128(ControlEmpty));
+            Clear(buffer, capacityCeilGroupSize);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ref TValue TryGet(InPlaceSwissTableHeader<TKey, TValue>* header, TKey key, out bool exists)
         {
             byte* buffer = (byte*)header + ControlOffset;
-            int index = SwissTable<TKey, TValue>.Find<THasher>(buffer, header->CapacityCeilGroupSize, key, out byte h2, out exists);
+            int index = SwissTable<TKey, TValue>.Find<THasher>(buffer, header->CapacityCeilGroupSize, key, out byte h2, out int groupOffset, out exists);
 
-            KeyValue<TKey, TValue>* groupPtr = GetGroupPtr(header);
+            KeyValue<TKey, TValue>* groupPtr = SwissTable<TKey, TValue>.GetKeyValueGroupPtr(buffer, header->CapacityCeilGroupSize);
             return ref exists ? ref groupPtr[index].Value : ref NullRef<TValue>();
         }
 
@@ -76,13 +70,15 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
         public static ref TValue GetOrAddNoResize(InPlaceSwissTableHeader<TKey, TValue>* header, TKey key, out bool added)
         {
             byte* buffer = (byte*)header + ControlOffset;
-            int index = SwissTable<TKey, TValue>.Find<THasher>(buffer, header->CapacityCeilGroupSize, key, out byte h2, out bool exists);
+            int index = SwissTable<TKey, TValue>.Find<THasher>(buffer, header->CapacityCeilGroupSize, key, out byte h2, out int groupOffset, out bool exists);
 
             if (exists)
             {
                 // Exists
                 added = false;
-                return ref GetGroupPtr(header)[index].Value;
+
+                KeyValue<TKey, TValue>* groupPtr = SwissTable<TKey, TValue>.GetKeyValueGroupPtr(buffer, header->CapacityCeilGroupSize);
+                return ref groupPtr[index].Value;
             }
 
             // Add
@@ -103,7 +99,7 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
 
             ++header->Count;
 
-            int index = SwissTable<TKey, TValue>.FindEmpty<THasher>(buffer, header->CapacityCeilGroupSize, key, out byte h2);
+            int index = SwissTable<TKey, TValue>.FindEmpty<THasher>(buffer, header->CapacityCeilGroupSize, key, out byte h2, out int groupOffset);
             return ref SwissTable<TKey, TValue>.Insert(buffer, header->CapacityCeilGroupSize, index, key, h2);
         }
 
@@ -112,18 +108,6 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
         {
             byte* buffer = (byte*)header + ControlOffset;
             return new SwissTable<TKey, TValue>.Enumerator(buffer, header->CapacityCeilGroupSize);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static nint GetGroupOffset(int capacity)
-        {
-            return Align(ControlOffset + (capacity * sizeof(byte)), SwissTable<TKey, TValue>.KeyValueGroupAlignment);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static KeyValue<TKey, TValue>* GetGroupPtr(InPlaceSwissTableHeader<TKey, TValue>* header)
-        {
-            return (KeyValue<TKey, TValue>*)((byte*)header + GetGroupOffset(header->CapacityCeilGroupSize));
         }
     }
 }

@@ -12,7 +12,6 @@ using Unity.Jobs;
 using Unity.Mathematics;
 using static EvilOctane.Collections.SwissTable;
 using static System.Runtime.CompilerServices.Unsafe;
-using static Unity.Collections.CollectionHelper;
 using static Unity.Collections.CollectionHelper2;
 using static Unity.Collections.LowLevel.Unsafe.UnsafeUtility2;
 
@@ -76,12 +75,6 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
             get => capacityCeilGroupSize;
         }
 
-        internal readonly KeyValue<TKey, TValue>* GroupPtr
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => (KeyValue<TKey, TValue>*)(buffer + GetGroupOffset(capacityCeilGroupSize));
-        }
-
         public TValue this[TKey key]
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -102,16 +95,16 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public UnsafeSwissTable(AllocatorManager.AllocatorHandle allocator) : this(3 * GroupSize, allocator)
+        public UnsafeSwissTable(AllocatorManager.AllocatorHandle allocator) : this(2 * GroupSize, allocator)
         {
         }
 
         public UnsafeSwissTable(int initialCapacity, AllocatorManager.AllocatorHandle allocator)
         {
-            capacityCeilGroupSize = GetCapacityCeilGroupSize(initialCapacity);
+            capacityCeilGroupSize = GetCapacityCeilGroupSize(initialCapacity, out _);
             int groupCount = capacityCeilGroupSize / GroupSize;
 
-            nint groupOffset = GetGroupOffset(capacityCeilGroupSize);
+            nint groupOffset = SwissTable<TKey, TValue>.GetKeyValueGroupOffset(capacityCeilGroupSize);
             nint totalSize = groupOffset + ((nint)groupCount * sizeof(KeyValue<TKey, TValue>) * GroupSize);
 
             buffer = (byte*)MemoryExposed.Unmanaged.Allocate(totalSize, SwissTable<TKey, TValue>.BufferAlignment, allocator);
@@ -121,12 +114,6 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
             SkipInit(out occupiedCount);
 
             Clear();
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static nint GetGroupOffset(int capacity)
-        {
-            return Align(capacity * sizeof(byte), SwissTable<TKey, TValue>.KeyValueGroupAlignment);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -238,14 +225,13 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
             count = 0;
             occupiedCount = 0;
 
-            int groupCount = capacityCeilGroupSize / GroupSize;
-            new UnsafeSpan<v128>((v128*)buffer, groupCount).Fill(new v128(ControlEmpty));
+            SwissTable.Clear(buffer, capacityCeilGroupSize);
         }
 
         public readonly ref TValue TryGet(TKey key, out bool exists)
         {
-            int index = SwissTable<TKey, TValue>.Find<THasher>(buffer, capacityCeilGroupSize, key, out byte h2, out exists);
-            return ref exists ? ref GroupPtr[index].Value : ref NullRef<TValue>();
+            int index = SwissTable<TKey, TValue>.Find<THasher>(buffer, capacityCeilGroupSize, key, out byte h2, out _, out exists);
+            return ref exists ? ref SwissTable<TKey, TValue>.GetKeyValueGroupPtr(buffer, capacityCeilGroupSize)[index].Value : ref NullRef<TValue>();
         }
 
         public ref TValue GetOrAdd(TKey key, out bool added)
@@ -259,13 +245,13 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
 
         public ref TValue GetOrAddNoResize(TKey key, out bool added)
         {
-            int index = SwissTable<TKey, TValue>.Find<THasher>(buffer, capacityCeilGroupSize, key, out byte h2, out bool exists);
+            int index = SwissTable<TKey, TValue>.Find<THasher>(buffer, capacityCeilGroupSize, key, out byte h2, out _, out bool exists);
 
             if (exists)
             {
                 // Exists
                 added = false;
-                return ref GroupPtr[index].Value;
+                return ref SwissTable<TKey, TValue>.GetKeyValueGroupPtr(buffer, capacityCeilGroupSize)[index].Value;
             }
 
             // Add
@@ -290,14 +276,13 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
 
             ++count;
             ++occupiedCount;
-
-            int index = SwissTable<TKey, TValue>.FindEmpty<THasher>(buffer, capacityCeilGroupSize, key, out byte h2);
+            int index = SwissTable<TKey, TValue>.FindEmpty<THasher>(buffer, capacityCeilGroupSize, key, out byte h2, out _);
             return ref SwissTable<TKey, TValue>.Insert(buffer, capacityCeilGroupSize, index, key, h2);
         }
 
         public bool Remove(TKey key)
         {
-            int index = SwissTable<TKey, TValue>.Find<THasher>(buffer, capacityCeilGroupSize, key, out _, out bool exists);
+            int index = SwissTable<TKey, TValue>.Find<THasher>(buffer, capacityCeilGroupSize, key, out _, out int groupOffset, out bool exists);
 
             if (!exists)
             {
@@ -306,8 +291,14 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
             }
 
             // Delete
-            Delete(buffer, index, ref occupiedCount);
+            Delete(buffer, capacityCeilGroupSize, groupOffset, index, tryReclaim: false, out bool reclaimed);
             --count;
+
+            if (reclaimed)
+            {
+                // Reclaimed
+                --occupiedCount;
+            }
 
             return true;
         }
@@ -365,7 +356,7 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
             this.target = target;
         }
 
-        public byte[] Controls => new UnsafeSpan<byte>(target.buffer, target.count).ToArray();
+        public byte[] Controls => new UnsafeSpan<byte>(target.buffer, target.capacityCeilGroupSize).ToArray();
 
         public KeyValue<TKey, TValue>[] Items
         {
