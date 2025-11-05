@@ -38,7 +38,6 @@ namespace EvilOctane.Collections
 
         public const byte ControlEmpty = 0x80;
         public const byte ControlDeleted = 0xfe;
-        public const byte ControlSentinel = 0xff;
         public const byte ControlFullMask = 0x7f;
 
         public static int MaxCapacity
@@ -75,7 +74,7 @@ namespace EvilOctane.Collections
         public static uint GetFullMask(byte* buffer, int index)
         {
             CheckIsAligned(buffer, ControlAlignment);
-            Hint.Assume(IsAligned(buffer, GroupSize));
+            Hint.Assume(IsAligned(buffer, ControlAlignment));
 
             byte* controlPtr = buffer + index;
 
@@ -117,7 +116,7 @@ namespace EvilOctane.Collections
         public static uint GetH2Mask(byte* buffer, int index, byte h2)
         {
             CheckIsAligned(buffer, ControlAlignment);
-            Hint.Assume(IsAligned(buffer, GroupSize));
+            Hint.Assume(IsAligned(buffer, ControlAlignment));
 
             byte* controlPtr = buffer + index;
 
@@ -522,7 +521,7 @@ namespace EvilOctane.Collections
             return Find<TKey, THasher>(sizeof(KeyValue<TKey, TValue>), buffer, (byte*)groupPtr, capacityCeilGroupSize, key, false, out h2, out groupOffset, out _);
         }
 
-        public static ref TValue Insert(byte* buffer, int capacityCeilGroupSize, int index, TKey key, byte h2)
+        public static TValue* Insert(byte* buffer, int capacityCeilGroupSize, int index, TKey key, byte h2)
         {
             CheckIsAligned(buffer, ControlAlignment);
             CheckCapacity(capacityCeilGroupSize);
@@ -533,13 +532,13 @@ namespace EvilOctane.Collections
 
             // Key Value
             KeyValue<TKey, TValue>* groupPtr = GetKeyValueGroupPtr(buffer, capacityCeilGroupSize);
-            ref KeyValue<TKey, TValue> keyValue = ref groupPtr[index];
+            KeyValue<TKey, TValue>* keyValuePtr = &groupPtr[index];
 
             // Key
-            keyValue.Key = key;
+            keyValuePtr->Key = key;
 
             // Value
-            return ref keyValue.Value;
+            return &keyValuePtr->Value;
         }
 
         public static void CopyKeysTo(byte* buffer, int capacityCeilGroupSize, TKey* keyPtr)

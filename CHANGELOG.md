@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.14.0] - 2025-11-05
+
+* SwissTable ref return changes
+* Added LogUtility
+
 ## [0.13.1] - 2025-11-04
 
 * SwissTable sliding window groups implemented

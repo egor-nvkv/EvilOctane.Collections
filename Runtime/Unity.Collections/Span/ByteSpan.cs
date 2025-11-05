@@ -6,6 +6,7 @@ using Unity.Burst.CompilerServices;
 using Unity.Mathematics;
 using static Unity.Collections.CollectionHelper;
 using static Unity.Collections.CollectionHelper2;
+using static Unity.Collections.FixedStringMethods;
 using static Unity.Collections.LowLevel.Unsafe.UnsafeUtility2;
 using SystemUnsafe = System.Runtime.CompilerServices.Unsafe;
 
@@ -231,7 +232,7 @@ namespace Unity.Collections.LowLevel.Unsafe
         public readonly ByteSpan Slice(int startIndex)
         {
             int resultLength = Length - startIndex;
-            FixedStringMethods.CheckSubstringInRange(LengthField, startIndex, resultLength);
+            CheckSubstringInRange(LengthField, startIndex, resultLength);
 
             return new ByteSpan(Ptr + startIndex, resultLength);
         }
@@ -240,7 +241,7 @@ namespace Unity.Collections.LowLevel.Unsafe
         public readonly ByteSpan Slice(int startIndex, int length)
         {
             int resultLength = math.min(length, Length - startIndex);
-            FixedStringMethods.CheckSubstringInRange(LengthField, startIndex, resultLength);
+            CheckSubstringInRange(LengthField, startIndex, resultLength);
 
             return new ByteSpan(Ptr + startIndex, resultLength);
         }

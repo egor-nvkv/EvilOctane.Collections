@@ -19,7 +19,7 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
     [StructLayout(LayoutKind.Sequential)]
     [DebuggerTypeProxy(typeof(UnsafeSwissSetDebuggerTypeProxy<,>))]
     [GenerateTestsForBurstCompatibility(GenericTypeArguments = new[] { typeof(int), typeof(XXH3PodHasher<int>) })]
-    public unsafe struct UnsafeSwissSet<TKey, THasher> : IEnumerable<Pointer<TKey>>, INativeDisposable
+    public unsafe struct UnsafeSwissSet<TKey, THasher> : IEnumerable<Ref<TKey>>, INativeDisposable
     where TKey : unmanaged, IEquatable<TKey>
     where THasher : unmanaged, IHasher64<TKey>
     {
@@ -110,7 +110,7 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
             return new SwissSet<TKey>.Enumerator(buffer, capacityCeilGroupSize);
         }
 
-        IEnumerator<Pointer<TKey>> IEnumerable<Pointer<TKey>>.GetEnumerator()
+        IEnumerator<Ref<TKey>> IEnumerable<Ref<TKey>>.GetEnumerator()
         {
             throw new NotSupportedException();
         }
@@ -283,7 +283,7 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
 
             while (enumerator.MoveNext())
             {
-                _ = AddNoResize(enumerator.Current.Ref);
+                _ = AddNoResize(enumerator.Current.RefRW);
             }
         }
     }
@@ -308,9 +308,9 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
                 TKey[] result = new TKey[target.Count];
                 int index = 0;
 
-                foreach (Pointer<TKey> item in target)
+                foreach (Ref<TKey> item in target)
                 {
-                    result[index++] = item.Ref;
+                    result[index++] = item.RefRW;
                 }
 
                 return result;

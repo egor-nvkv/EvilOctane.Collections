@@ -79,6 +79,18 @@ namespace Unity.Collections.LowLevel.Unsafe
         [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
         [Conditional("UNITY_DOTS_DEBUG")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void CheckPointerIsNotNull<T>(T* ptr)
+            where T : unmanaged
+        {
+            if (Hint.Unlikely(ptr == null))
+            {
+                throw new NullReferenceException("Pointer is null.");
+            }
+        }
+
+        [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
+        [Conditional("UNITY_DOTS_DEBUG")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void CheckIsAligned<T>(void* ptr)
             where T : unmanaged
         {

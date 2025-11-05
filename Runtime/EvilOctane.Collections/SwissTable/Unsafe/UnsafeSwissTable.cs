@@ -80,18 +80,18 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             readonly get
             {
-                ref TValue item = ref TryGet(key, out bool exists);
+                Ref<TValue> item = TryGet(key, out bool exists);
 
                 if (Hint.Unlikely(!exists))
                 {
                     ThrowKeyNotPresent();
                 }
 
-                return item;
+                return item.RefRW;
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            set => GetOrAdd(key, out _) = value;
+            set => GetOrAdd(key, out _).RefRW = value;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -228,22 +228,22 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
             SwissTable.Clear(buffer, capacityCeilGroupSize);
         }
 
-        public readonly ref TValue TryGet(TKey key, out bool exists)
+        public readonly Ref<TValue> TryGet(TKey key, out bool exists)
         {
             int index = SwissTable<TKey, TValue>.Find<THasher>(buffer, capacityCeilGroupSize, key, out byte h2, out _, out exists);
-            return ref exists ? ref SwissTable<TKey, TValue>.GetKeyValueGroupPtr(buffer, capacityCeilGroupSize)[index].Value : ref NullRef<TValue>();
+            return exists ? &SwissTable<TKey, TValue>.GetKeyValueGroupPtr(buffer, capacityCeilGroupSize)[index].Value : null;
         }
 
-        public ref TValue GetOrAdd(TKey key, out bool added)
+        public Ref<TValue> GetOrAdd(TKey key, out bool added)
         {
             // Preemptive resize
             // Better than calling Find twice
             EnsureSlack(1);
 
-            return ref GetOrAddNoResize(key, out added);
+            return GetOrAddNoResize(key, out added);
         }
 
-        public ref TValue GetOrAddNoResize(TKey key, out bool added)
+        public Ref<TValue> GetOrAddNoResize(TKey key, out bool added)
         {
             int index = SwissTable<TKey, TValue>.Find<THasher>(buffer, capacityCeilGroupSize, key, out byte h2, out _, out bool exists);
 
@@ -251,7 +251,7 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
             {
                 // Exists
                 added = false;
-                return ref SwissTable<TKey, TValue>.GetKeyValueGroupPtr(buffer, capacityCeilGroupSize)[index].Value;
+                return &SwissTable<TKey, TValue>.GetKeyValueGroupPtr(buffer, capacityCeilGroupSize)[index].Value;
             }
 
             // Add
@@ -260,16 +260,16 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
             ++occupiedCount;
 
             added = true;
-            return ref SwissTable<TKey, TValue>.Insert(buffer, capacityCeilGroupSize, index, key, h2);
+            return SwissTable<TKey, TValue>.Insert(buffer, capacityCeilGroupSize, index, key, h2);
         }
 
-        public ref TValue Add(TKey key)
+        public Ref<TValue> Add(TKey key)
         {
             EnsureSlack(1);
-            return ref AddNoResize(key);
+            return AddNoResize(key);
         }
 
-        public ref TValue AddNoResize(TKey key)
+        public Ref<TValue> AddNoResize(TKey key)
         {
             CheckAddNoResizeHasEnoughCapacity(occupiedCount, capacityCeilGroupSize, 1);
             SwissTable<TKey, TValue>.CheckKeyNotAlreadyAdded<THasher>(buffer, capacityCeilGroupSize, key);
@@ -277,7 +277,7 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
             ++count;
             ++occupiedCount;
             int index = SwissTable<TKey, TValue>.FindEmpty<THasher>(buffer, capacityCeilGroupSize, key, out byte h2, out _);
-            return ref SwissTable<TKey, TValue>.Insert(buffer, capacityCeilGroupSize, index, key, h2);
+            return SwissTable<TKey, TValue>.Insert(buffer, capacityCeilGroupSize, index, key, h2);
         }
 
         public bool Remove(TKey key)
@@ -339,7 +339,7 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
             while (enumerator.MoveNext())
             {
                 KeyValueRef<TKey, TValue> keyValue = enumerator.Current;
-                AddNoResize(keyValue.KeyRefRO) = keyValue.ValueRef;
+                AddNoResize(keyValue.KeyRefRO).RefRW = keyValue.ValueRef;
             }
         }
     }
@@ -367,7 +367,7 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
 
                 foreach (KeyValueRef<TKey, TValue> item in target)
                 {
-                    result[index++] = item.Pointer.Ref;
+                    result[index++] = item.Pointer.RefRW;
                 }
 
                 return result;

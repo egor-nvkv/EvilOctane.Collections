@@ -49,8 +49,8 @@ namespace EvilOctane.Collections.Tests
         [MonoPInvokeCallback(typeof(TryGetDelegate))]
         private static void TryGet_Burst(ref IntIntXXH3Table table, int key, out int value, out int exists)
         {
-            ref int valueRef = ref table.TryGet(key, out bool existsBool);
-            value = existsBool ? valueRef : default;
+            Unity.Collections.LowLevel.Unsafe.Ref<int> valuePtr = table.TryGet(key, out bool existsBool);
+            value = existsBool ? valuePtr.RefRW : default;
             exists = existsBool ? 1 : 0;
         }
 
@@ -58,7 +58,7 @@ namespace EvilOctane.Collections.Tests
         [MonoPInvokeCallback(typeof(GetOrAddXXH3Delegate))]
         private static void GetOrAdd_Burst(ref IntIntXXH3Table table, int key, int value, out int added)
         {
-            table.GetOrAdd(key, out bool addedBool) = value;
+            table.GetOrAdd(key, out bool addedBool).RefRW = value;
             added = addedBool ? 1 : 0;
         }
 
@@ -75,7 +75,7 @@ namespace EvilOctane.Collections.Tests
         [MonoPInvokeCallback(typeof(GetOrAddIdentityDelegate))]
         private static void GetOrAdd_Burst(ref IntIntIdentityTable table, int key, int value, out int added)
         {
-            table.GetOrAdd(key, out bool addedBool) = value;
+            table.GetOrAdd(key, out bool addedBool).RefRW = value;
             added = addedBool ? 1 : 0;
         }
 
