@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using Unity.Collections;
 using Unity.Mathematics;
+using static System.Runtime.CompilerServices.Unsafe;
 
 namespace EvilOctane.Collections
 {
@@ -10,8 +11,9 @@ namespace EvilOctane.Collections
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public readonly ulong CalculateHash(in T value)
         {
-            uint2 hash = xxHash3.Hash64(value.GetUnsafePtr(), value.Length);
-            return hash.x | ((ulong)hash.y << 32);
+            ref T asRef = ref AsRef(in value);
+            uint2 hash = xxHash3.Hash64(asRef.GetUnsafePtr(), asRef.Length);
+            return ReadUnaligned<ulong>(&hash);
         }
     }
 }

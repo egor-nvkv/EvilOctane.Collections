@@ -57,7 +57,7 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Ref<TValue> TryGet(InPlaceSwissTableHeader<TKey, TValue>* header, TKey key, out bool exists)
+        public static Pointer<TValue> TryGet(InPlaceSwissTableHeader<TKey, TValue>* header, TKey key, out bool exists)
         {
             byte* buffer = (byte*)header + ControlOffset;
             int index = SwissTable<TKey, TValue>.Find<THasher>(buffer, header->CapacityCeilGroupSize, key, out byte h2, out int groupOffset, out exists);
@@ -67,7 +67,7 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Ref<TValue> GetOrAddNoResize(InPlaceSwissTableHeader<TKey, TValue>* header, TKey key, out bool added)
+        public static Pointer<TValue> GetOrAddNoResize(InPlaceSwissTableHeader<TKey, TValue>* header, TKey key, out bool added)
         {
             byte* buffer = (byte*)header + ControlOffset;
             int index = SwissTable<TKey, TValue>.Find<THasher>(buffer, header->CapacityCeilGroupSize, key, out byte h2, out int groupOffset, out bool exists);
@@ -90,7 +90,7 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Ref<TValue> AddNoResize(InPlaceSwissTableHeader<TKey, TValue>* header, TKey key)
+        public static Pointer<TValue> AddNoResize(InPlaceSwissTableHeader<TKey, TValue>* header, TKey key)
         {
             CheckAddNoResizeHasEnoughCapacity(header->Count, header->CapacityCeilGroupSize, 1);
 

@@ -100,12 +100,12 @@ namespace EvilOctane.Collections
 
             while (enumerator.MoveNext())
             {
-                keyPtr[index++] = enumerator.Current.RefRW;
+                keyPtr[index++] = enumerator.Current.AsRef;
             }
         }
 
         [StructLayout(LayoutKind.Sequential)]
-        public struct Enumerator : IEnumerator<Ref<TKey>>
+        public struct Enumerator : IEnumerator<Pointer<TKey>>
         {
             internal SwissTable.Enumerator enumerator;
 
@@ -115,7 +115,7 @@ namespace EvilOctane.Collections
                 enumerator = new SwissTable.Enumerator(buffer, (byte*)GetKeyGroupPtr(buffer, capacityCeilGroupSize), capacityCeilGroupSize);
             }
 
-            public readonly Ref<TKey> Current
+            public readonly Pointer<TKey> Current
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get

@@ -1,7 +1,9 @@
+using System;
 using System.Runtime.CompilerServices;
 using Unity.Burst.CompilerServices;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
+using Unity.Mathematics;
 using UnityEngine;
 using static System.Runtime.CompilerServices.Unsafe;
 
@@ -12,25 +14,60 @@ namespace EvilOctane.Entities
     {
         public const int MaxTagLength = 128;
 
+        [GenerateTestsForBurstCompatibility(GenericTypeArguments = new Type[] { typeof(FixedString32Bytes), typeof(FixedString32Bytes) })]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void LogTagged<S0, S1>(in S0 primaryTag, in S1 message, LogType logType = LogType.Log)
+            where S0 : unmanaged, INativeList<byte>, IUTF8Bytes
+            where S1 : unmanaged, INativeList<byte>, IUTF8Bytes
+        {
+            LogTaggedImpl(
+                in primaryTag,
+                ByteSpan.Empty,
+                in message,
+                logType);
+        }
+
+        [GenerateTestsForBurstCompatibility(GenericTypeArguments = new Type[] { typeof(FixedString32Bytes), typeof(FixedString32Bytes), typeof(FixedString32Bytes) })]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void LogTagged<S0, S1, S2>(in S0 primaryTag, in S1 secondaryTag, in S2 message, LogType logType = LogType.Log)
+            where S0 : unmanaged, INativeList<byte>, IUTF8Bytes
+            where S1 : unmanaged, INativeList<byte>, IUTF8Bytes
+            where S2 : unmanaged, INativeList<byte>, IUTF8Bytes
+        {
+            LogTaggedImpl(
+                in primaryTag,
+                in secondaryTag,
+                in message,
+                logType);
+        }
+
+        [HideInCallstack]
         [SkipLocalsInit]
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        public static void LogTagged(ByteSpan primaryTag, ByteSpan secondaryTag, ByteSpan message, LogType logType)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void LogTaggedImpl<S0, S1, S2>(in S0 primaryTag, in S1 secondaryTag, in S2 message, LogType logType)
+            where S0 : unmanaged, INativeList<byte>, IUTF8Bytes
+            where S1 : unmanaged, INativeList<byte>, IUTF8Bytes
+            where S2 : unmanaged, INativeList<byte>, IUTF8Bytes
         {
             SkipInit(out FixedString4096Bytes log);
 
-            bool hasPrimaryTag = !primaryTag.IsEmpty;
-            bool hasSecondaryTag = !secondaryTag.IsEmpty;
+            ref S0 primaryTagRefRo = ref AsRef(in primaryTag);
+            ref S1 secondaryTagRefRo = ref AsRef(in secondaryTag);
+            ref S2 messageRefRo = ref AsRef(in message);
 
-            ByteSpan primaryTagTruncated = primaryTag[..MaxTagLength];
-            ByteSpan secondaryTagTruncated = secondaryTag[..MaxTagLength];
+            bool hasPrimaryTag = primaryTagRefRo.Length != 0;
+            bool hasSecondaryTag = secondaryTagRefRo.Length != 0;
+
+            int primaryTagTruncatedLength = math.min(primaryTagRefRo.Length, MaxTagLength);
+            int secondaryTagTruncatedLength = math.min(secondaryTagRefRo.Length, MaxTagLength);
 
             int prologueLength =
-                primaryTagTruncated.Length + (hasPrimaryTag ? 1/* */ : 0) +
-                secondaryTagTruncated.Length + (hasSecondaryTag ? 3/*[] */ : 0) +
+                primaryTagTruncatedLength + (hasPrimaryTag ? 1/* */ : 0) +
+                secondaryTagTruncatedLength + (hasSecondaryTag ? 3/*[] */ : 0) +
                 2/*| */;
 
-            ByteSpan messageTruncated = message[..(log.Capacity - prologueLength)];
-            int totalLength = prologueLength + messageTruncated.Length;
+            int messageTruncatedLength = math.min(messageRefRo.Length, log.Capacity - prologueLength);
+            int totalLength = prologueLength + messageTruncatedLength;
 
             log.Length = totalLength;
             int offset = 0;
@@ -38,8 +75,8 @@ namespace EvilOctane.Entities
             // Primary tag
             if (hasPrimaryTag)
             {
-                new ByteSpan(log.GetUnsafePtr() + offset, primaryTagTruncated.Length).CopyFrom(primaryTagTruncated);
-                offset += primaryTagTruncated.Length;
+                new ByteSpan(log.GetUnsafePtr() + offset, primaryTagTruncatedLength).CopyFrom(new ByteSpan(primaryTagRefRo.GetUnsafePtr(), primaryTagTruncatedLength));
+                offset += primaryTagTruncatedLength;
 
                 log[offset++] = (byte)' ';
             }
@@ -49,8 +86,8 @@ namespace EvilOctane.Entities
             {
                 log[offset++] = (byte)'[';
 
-                new ByteSpan(log.GetUnsafePtr() + offset, secondaryTagTruncated.Length).CopyFrom(secondaryTagTruncated);
-                offset += secondaryTagTruncated.Length;
+                new ByteSpan(log.GetUnsafePtr() + offset, secondaryTagTruncatedLength).CopyFrom(new ByteSpan(secondaryTagRefRo.GetUnsafePtr(), secondaryTagTruncatedLength));
+                offset += secondaryTagTruncatedLength;
 
                 log[offset++] = (byte)']';
                 log[offset++] = (byte)' ';
@@ -61,7 +98,7 @@ namespace EvilOctane.Entities
             log[offset++] = (byte)' ';
 
             // Message
-            new ByteSpan(log.GetUnsafePtr() + offset, messageTruncated.Length).CopyFrom(messageTruncated);
+            new ByteSpan(log.GetUnsafePtr() + offset, messageTruncatedLength).CopyFrom(new ByteSpan(messageRefRo.GetUnsafePtr(), messageTruncatedLength));
 
             switch (logType)
             {
@@ -80,31 +117,6 @@ namespace EvilOctane.Entities
                     Debug.Log(log);
                     break;
             }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void LogTaggedGeneric<S0, S1>(in S0 primaryTag, in S1 message, LogType logType = LogType.Log)
-            where S0 : unmanaged, INativeList<byte>, IUTF8Bytes
-            where S1 : unmanaged, INativeList<byte>, IUTF8Bytes
-        {
-            LogTagged(
-                AsRef(in primaryTag).AsByteSpan(),
-                ByteSpan.Empty,
-                AsRef(in message).AsByteSpan(),
-                logType);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void LogTaggedGeneric<S0, S1, S2>(in S0 primaryTag, in S1 secondaryTag, in S2 message, LogType logType = LogType.Log)
-            where S0 : unmanaged, INativeList<byte>, IUTF8Bytes
-            where S1 : unmanaged, INativeList<byte>, IUTF8Bytes
-            where S2 : unmanaged, INativeList<byte>, IUTF8Bytes
-        {
-            LogTagged(
-                AsRef(in primaryTag).AsByteSpan(),
-                AsRef(in secondaryTag).AsByteSpan(),
-                AsRef(in message).AsByteSpan(),
-                logType);
         }
     }
 }

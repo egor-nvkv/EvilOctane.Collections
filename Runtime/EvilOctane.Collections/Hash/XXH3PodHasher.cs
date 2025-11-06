@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using Unity.Collections;
 using Unity.Mathematics;
+using static System.Runtime.CompilerServices.Unsafe;
 
 namespace EvilOctane.Collections
 {
@@ -13,7 +14,7 @@ namespace EvilOctane.Collections
             fixed (T* ptr = &value)
             {
                 uint2 hash = xxHash3.Hash64(ptr, sizeof(T));
-                return hash.x | ((ulong)hash.y << 32);
+                return ReadUnaligned<ulong>(&hash);
             }
         }
     }

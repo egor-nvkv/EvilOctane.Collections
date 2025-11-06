@@ -1,63 +1,61 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using static System.Runtime.CompilerServices.Unsafe;
 using static Unity.Collections.LowLevel.Unsafe.UnsafeUtility2;
 
 namespace Unity.Collections.LowLevel.Unsafe
 {
-    public readonly unsafe struct Ref<T>
+    [StructLayout(LayoutKind.Sequential)]
+    public readonly unsafe struct Pointer<T>
         where T : unmanaged
     {
-        public readonly T* Ptr;
+        public readonly T* Value;
 
         public readonly bool IsNull
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => Ptr == null;
+            get => Value == null;
         }
 
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-        public readonly ref T RefRW
+        public readonly ref T AsRef
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                CheckPointerIsNotNull(Ptr);
-                return ref *Ptr;
-            }
-        }
-
-        [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-        public readonly ref readonly T RefRO
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get
-            {
-                CheckPointerIsNotNull(Ptr);
-                return ref *Ptr;
+                CheckPointerIsNotNull(Value);
+                return ref *Value;
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Ref(T* ptr)
+        public Pointer(ref T reference)
         {
-            Ptr = ptr;
+            Value = (T*)AsPointer(ref reference);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Pointer(T* pointer)
+        {
+            Value = pointer;
         }
 
         public override readonly string ToString()
         {
-            return Ptr == null ? "null" : Ptr->ToString();
+            return Value == null ? "null" : Value->ToString();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static implicit operator Ref<T>(T* value)
+        public static implicit operator Pointer<T>(T* other)
         {
-            return new Ref<T>(value);
+            return new Pointer<T>(other);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static implicit operator T*(Ref<T> self)
+        public static implicit operator T*(Pointer<T> self)
         {
-            return self.Ptr;
+            return self.Value;
         }
     }
 }

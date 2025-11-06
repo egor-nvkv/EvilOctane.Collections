@@ -2,6 +2,7 @@ using AOT;
 using NUnit.Framework;
 using Unity.Burst;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using UnityEngine;
 using IntIntIdentityTable = EvilOctane.Collections.LowLevel.Unsafe.UnsafeSwissTable<int, int, EvilOctane.Collections.Tests.IdentityHasher>;
@@ -49,8 +50,8 @@ namespace EvilOctane.Collections.Tests
         [MonoPInvokeCallback(typeof(TryGetDelegate))]
         private static void TryGet_Burst(ref IntIntXXH3Table table, int key, out int value, out int exists)
         {
-            Unity.Collections.LowLevel.Unsafe.Ref<int> valuePtr = table.TryGet(key, out bool existsBool);
-            value = existsBool ? valuePtr.RefRW : default;
+            Pointer<int> valuePtr = table.TryGet(key, out bool existsBool);
+            value = existsBool ? valuePtr.AsRef : default;
             exists = existsBool ? 1 : 0;
         }
 
@@ -58,7 +59,7 @@ namespace EvilOctane.Collections.Tests
         [MonoPInvokeCallback(typeof(GetOrAddXXH3Delegate))]
         private static void GetOrAdd_Burst(ref IntIntXXH3Table table, int key, int value, out int added)
         {
-            table.GetOrAdd(key, out bool addedBool).RefRW = value;
+            table.GetOrAdd(key, out bool addedBool).AsRef = value;
             added = addedBool ? 1 : 0;
         }
 
@@ -75,7 +76,7 @@ namespace EvilOctane.Collections.Tests
         [MonoPInvokeCallback(typeof(GetOrAddIdentityDelegate))]
         private static void GetOrAdd_Burst(ref IntIntIdentityTable table, int key, int value, out int added)
         {
-            table.GetOrAdd(key, out bool addedBool).RefRW = value;
+            table.GetOrAdd(key, out bool addedBool).AsRef = value;
             added = addedBool ? 1 : 0;
         }
 
