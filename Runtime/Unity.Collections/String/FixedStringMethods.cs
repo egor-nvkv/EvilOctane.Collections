@@ -100,7 +100,7 @@ namespace Unity.Collections
                 str1Ref.Length +
                 str2Ref.Length;
 
-            if (Hint.Unlikely(!str0.TryResizeBurstOptimized(oldLength + extraLength)))
+            if (Hint.Unlikely(!str0.TryResize(oldLength + extraLength, NativeArrayOptions.UninitializedMemory)))
             {
                 return FormatError.Overflow;
             }
@@ -135,7 +135,7 @@ namespace Unity.Collections
                 str2Ref.Length +
                 str3Ref.Length;
 
-            if (Hint.Unlikely(!str0.TryResizeBurstOptimized(oldLength + extraLength)))
+            if (Hint.Unlikely(!str0.TryResize(oldLength + extraLength, NativeArrayOptions.UninitializedMemory)))
             {
                 return FormatError.Overflow;
             }
@@ -177,7 +177,7 @@ namespace Unity.Collections
                 str3Ref.Length +
                 str4Ref.Length;
 
-            if (Hint.Unlikely(!str0.TryResizeBurstOptimized(oldLength + extraLength)))
+            if (Hint.Unlikely(!str0.TryResize(oldLength + extraLength, NativeArrayOptions.UninitializedMemory)))
             {
                 return FormatError.Overflow;
             }
@@ -226,7 +226,7 @@ namespace Unity.Collections
                 str4Ref.Length +
                 str5Ref.Length;
 
-            if (Hint.Unlikely(!str0.TryResizeBurstOptimized(oldLength + extraLength)))
+            if (Hint.Unlikely(!str0.TryResize(oldLength + extraLength, NativeArrayOptions.UninitializedMemory)))
             {
                 return FormatError.Overflow;
             }

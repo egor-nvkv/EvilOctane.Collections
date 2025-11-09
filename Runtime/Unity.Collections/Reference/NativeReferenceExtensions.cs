@@ -12,7 +12,7 @@ namespace Unity.Collections.LowLevel.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ref T GetRefReadOnly<T>(this NativeReference<T> self)
+        public static ref readonly T GetRefReadOnly<T>(this NativeReference<T> self)
             where T : unmanaged
         {
             return ref *self.GetUnsafeReadOnlyPtr();

@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.CompilerServices;
+using Unity.Collections.LowLevel.Unsafe;
 
 namespace Unity.Collections
 {
@@ -31,6 +32,13 @@ namespace Unity.Collections
             }
 
             return index + 1;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int FindOrderedInsertionIndex<T>(UnsafeSpan<T> span, T value)
+            where T : unmanaged, IComparable<T>
+        {
+            return FindOrderedInsertionIndex(span.Ptr, span.Length, value);
         }
     }
 }

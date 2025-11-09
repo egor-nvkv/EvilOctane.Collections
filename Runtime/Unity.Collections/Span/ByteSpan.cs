@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using Unity.Burst;
 using Unity.Burst.CompilerServices;
@@ -76,33 +75,10 @@ namespace Unity.Collections.LowLevel.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ByteSpan(byte* ptr, int length)
         {
-            CheckContainerLength(length);
-            CheckPtr(ptr, length);
+            CheckSpanPtr(ptr, length);
 
             Ptr = ptr;
             LengthField = length;
-        }
-
-        [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
-        [Conditional("UNITY_DOTS_DEBUG")]
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void CheckPtr(byte* ptr, int length)
-        {
-            if (ptr == null && (uint)length > 0)
-            {
-                throw new ArgumentException("Ptr cannot be null with non-zero length.");
-            }
-        }
-
-        [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
-        [Conditional("UNITY_DOTS_DEBUG")]
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void CheckCopyLengths(int srcLength, int dstLength)
-        {
-            if (srcLength != dstLength)
-            {
-                throw new ArgumentException("Source and Destination length must be the same.");
-            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -249,7 +225,7 @@ namespace Unity.Collections.LowLevel.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public readonly void CopyFrom(ByteSpan other)
         {
-            CheckCopyLengths(srcLength: other.LengthField, dstLength: LengthField);
+            CheckCopyLengths(sourceLength: other.LengthField, destLength: LengthField);
 
             if (Constant.IsConstantExpression(true))
             {

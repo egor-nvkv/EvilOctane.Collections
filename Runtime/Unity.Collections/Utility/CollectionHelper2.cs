@@ -32,6 +32,19 @@ namespace Unity.Collections
         [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
         [Conditional("UNITY_DOTS_DEBUG")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void CheckSpanPtr(void* ptr, int length)
+        {
+            CheckContainerLength(length);
+
+            if (Hint.Unlikely(ptr == null && length > 0))
+            {
+                throw new ArgumentException("Ptr cannot be null with non-zero length.");
+            }
+        }
+
+        [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
+        [Conditional("UNITY_DOTS_DEBUG")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void CheckContainerLength(nint length)
         {
             if (Hint.Unlikely(length < 0))
@@ -58,7 +71,7 @@ namespace Unity.Collections
         {
             if (Hint.Unlikely(count < 0))
             {
-                throw new ArgumentOutOfRangeException("Count cannot be negative.");
+                throw new ArgumentOutOfRangeException("Element count cannot be negative.");
             }
         }
 
@@ -70,6 +83,17 @@ namespace Unity.Collections
             if (Hint.Unlikely(elementSize <= 0))
             {
                 throw new ArgumentOutOfRangeException("Element size must be greater than zero.");
+            }
+        }
+
+        [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
+        [Conditional("UNITY_DOTS_DEBUG")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void CheckContainerStartIndex(nint startIndex)
+        {
+            if (Hint.Unlikely(startIndex < 0))
+            {
+                throw new ArgumentOutOfRangeException("Start index cannot be negative.");
             }
         }
 
@@ -96,6 +120,28 @@ namespace Unity.Collections
             if (Hint.Unlikely(length + count > capacity))
             {
                 throw new InvalidOperationException($"AddNoResize assumes that capacity is sufficient (Length = {(long)length}, Capacity = {(long)capacity}, Count = {(long)count}).");
+            }
+        }
+
+        [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
+        [Conditional("UNITY_DOTS_DEBUG")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void CheckSliceArgs(int length, int startIndex, int count)
+        {
+            CheckContainerLength(length);
+            CheckContainerStartIndex(startIndex);
+            CheckContainerIndexInRange(startIndex, length + 1);
+            CheckContainerElementCount(count);
+        }
+
+        [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
+        [Conditional("UNITY_DOTS_DEBUG")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void CheckCopyLengths(int sourceLength, int destLength)
+        {
+            if (sourceLength != destLength)
+            {
+                throw new ArgumentException("Source and Destination lengths must be the same.");
             }
         }
     }

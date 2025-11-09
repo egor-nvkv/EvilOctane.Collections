@@ -31,7 +31,7 @@ namespace Unity.Collections.LowLevel.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ref T ElementAtReadonly<T>(this NativeArray<T> self, int index)
+        public static ref readonly T ElementAtReadonly<T>(this NativeArray<T> self, int index)
             where T : unmanaged
         {
             CheckContainerIndexInRange(index, self.Length);

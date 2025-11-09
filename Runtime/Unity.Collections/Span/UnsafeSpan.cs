@@ -74,33 +74,10 @@ namespace Unity.Collections.LowLevel.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public UnsafeSpan(T* ptr, int length)
         {
-            CheckContainerLength(length);
-            CheckPtr(ptr, length);
+            CheckSpanPtr(ptr, length);
 
             Ptr = ptr;
             LengthField = length;
-        }
-
-        [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
-        [Conditional("UNITY_DOTS_DEBUG")]
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void CheckPtr(T* ptr, int length)
-        {
-            if (ptr == null && (uint)length > 0)
-            {
-                throw new ArgumentException("Ptr cannot be null with non-zero length.");
-            }
-        }
-
-        [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
-        [Conditional("UNITY_DOTS_DEBUG")]
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void CheckCopyLengths(int srcLength, int dstLength)
-        {
-            if (srcLength != dstLength)
-            {
-                throw new ArgumentException("Source and Destination length must be the same.");
-            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -149,7 +126,7 @@ namespace Unity.Collections.LowLevel.Unsafe
         public readonly UnsafeSpan<T> Slice(int startIndex)
         {
             int resultLength = Length - startIndex;
-            CheckSliceArgs(startIndex, resultLength);
+            CheckSliceArgs(Length, startIndex, resultLength);
 
             return new UnsafeSpan<T>(Ptr + startIndex, resultLength);
         }
@@ -158,9 +135,15 @@ namespace Unity.Collections.LowLevel.Unsafe
         public readonly UnsafeSpan<T> Slice(int startIndex, int length)
         {
             int resultLength = math.min(length, Length - startIndex);
-            CheckSliceArgs(startIndex, resultLength);
+            CheckSliceArgs(Length, startIndex, resultLength);
 
             return new UnsafeSpan<T>(Ptr + startIndex, resultLength);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly UnsafeSpan<T> Slice(UnsafeRange range)
+        {
+            return Slice(range.StartIndex, range.Length);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -227,7 +210,7 @@ namespace Unity.Collections.LowLevel.Unsafe
                     SystemUnsafe.InitBlock(Ptr, *(byte*)&value, (uint)Length);
                 }
             }
-            else if (((32 % sizeof(T)) == 0) || ((sizeof(T) % 32) == 0))
+            else if (Constant.IsConstantExpression(value) || ((32 % sizeof(T)) == 0) || ((sizeof(T) % 16) == 0))
             {
                 // Vectorizable
 
@@ -246,7 +229,7 @@ namespace Unity.Collections.LowLevel.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public readonly void CopyFrom(UnsafeSpan<T> other)
         {
-            CheckCopyLengths(srcLength: other.LengthField, dstLength: LengthField);
+            CheckCopyLengths(sourceLength: other.LengthField, destLength: LengthField);
 
             int byteCount = Length * sizeof(T);
 
@@ -262,24 +245,14 @@ namespace Unity.Collections.LowLevel.Unsafe
             }
         }
 
-        [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
-        [Conditional("UNITY_DOTS_DEBUG")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private readonly void CheckSliceArgs(int startIndex, int length)
+        public readonly void CopyFromInline(UnsafeSpan<T> other)
         {
-            if (startIndex < 0)
-            {
-                throw new ArgumentOutOfRangeException($"StartIndex {startIndex} must be non-negative.");
-            }
+            CheckCopyLengths(sourceLength: other.LengthField, destLength: LengthField);
 
-            if (startIndex > Length)
+            for (int index = 0; index != Length; ++index)
             {
-                throw new ArgumentOutOfRangeException($"StartIndex {startIndex} cannot be larger than length {Length}.");
-            }
-
-            if (length < 0)
-            {
-                throw new ArgumentOutOfRangeException($"Length {length} must be non-negative.");
+                Ptr[index] = other.Ptr[index];
             }
         }
 
