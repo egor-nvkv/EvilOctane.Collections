@@ -23,14 +23,14 @@ namespace Unity.Collections.LowLevel.Unsafe
         public static void EnsureCapacity<T>(this ref UnsafeList<T> self, int capacity, bool keepOldData = true)
             where T : unmanaged
         {
-            MemoryExposed.EnsureListCapacity<T>(ref Reinterpret<UnsafeList<T>, UntypedUnsafeListMutable>(ref self), capacity, keepOldData);
+            MemoryExposed.EnsureListCapacity<T>(ref ReinterpretExact<UnsafeList<T>, UntypedUnsafeListMutable>(ref self), capacity, keepOldData);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void EnsureSlack<T>(this ref UnsafeList<T> self, int slack)
             where T : unmanaged
         {
-            MemoryExposed.EnsureListSlack<T>(ref Reinterpret<UnsafeList<T>, UntypedUnsafeListMutable>(ref self), slack);
+            MemoryExposed.EnsureListSlack<T>(ref ReinterpretExact<UnsafeList<T>, UntypedUnsafeListMutable>(ref self), slack);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

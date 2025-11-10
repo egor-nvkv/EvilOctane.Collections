@@ -3,10 +3,10 @@ using System.Runtime.CompilerServices;
 using Unity.Burst;
 using Unity.Burst.CompilerServices;
 using Unity.Mathematics;
+using static System.Runtime.CompilerServices.Unsafe;
 using static Unity.Collections.CollectionHelper;
 using static Unity.Collections.CollectionHelper2;
 using static Unity.Collections.FixedStringMethods;
-using static Unity.Collections.LowLevel.Unsafe.UnsafeUtility2;
 using SystemUnsafe = System.Runtime.CompilerServices.Unsafe;
 
 namespace Unity.Collections.LowLevel.Unsafe
@@ -195,7 +195,7 @@ namespace Unity.Collections.LowLevel.Unsafe
         public override readonly int GetHashCode()
         {
             uint2 hash = xxHash3.Hash64(Ptr, Length);
-            return Reinterpret<uint2, ulong>(ref hash).GetHashCode();
+            return ReadUnaligned<ulong>(&hash).GetHashCode();
         }
 
         [ExcludeFromBurstCompatTesting("Returns managed string")]

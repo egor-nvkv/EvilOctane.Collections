@@ -60,7 +60,7 @@ namespace Unity.Collections
 
                 if (BurstRuntime.GetHashCode64<T>() == BurstRuntime.GetHashCode64<UnsafeText>())
                 {
-                    ref UnsafeText unsafeText = ref Reinterpret<T, UnsafeText>(ref self);
+                    ref UnsafeText unsafeText = ref ReinterpretExact<T, UnsafeText>(ref self);
                     ref UnsafeList<byte> unsafeList = ref unsafeText.AsUnsafeList();
 
                     unsafeList.EnsureCapacity(newLength + 1);
@@ -71,7 +71,7 @@ namespace Unity.Collections
                 }
                 else if (BurstRuntime.GetHashCode64<T>() == BurstRuntime.GetHashCode64<NativeText>())
                 {
-                    ref NativeText nativeText = ref Reinterpret<T, NativeText>(ref self);
+                    ref NativeText nativeText = ref ReinterpretExact<T, NativeText>(ref self);
                     ref UnsafeList<byte> unsafeList = ref nativeText.GetUnsafeText()->AsUnsafeList();
 
                     unsafeList.EnsureCapacity(newLength + 1);

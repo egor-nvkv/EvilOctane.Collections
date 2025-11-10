@@ -23,7 +23,7 @@ namespace Unity.Collections.LowLevel.Unsafe
             where TSource : unmanaged
             where TDestination : unmanaged
         {
-            CheckReinterpretArgs<TSource, TDestination>();
+            CheckReinterpretArgs<TSource, TDestination>(false, false);
             return ref As<TSource, TDestination>(ref source);
         }
 
@@ -32,14 +32,32 @@ namespace Unity.Collections.LowLevel.Unsafe
             where TSource : unmanaged
             where TDestination : unmanaged
         {
-            CheckReinterpretArgs<TSource, TDestination>();
+            CheckReinterpretArgs<TSource, TDestination>(false, false);
+            return (TDestination*)source;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ref TDestination ReinterpretExact<TSource, TDestination>(ref TSource source)
+            where TSource : unmanaged
+            where TDestination : unmanaged
+        {
+            CheckReinterpretArgs<TSource, TDestination>(true, true);
+            return ref As<TSource, TDestination>(ref source);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static TDestination* ReinterpretExact<TSource, TDestination>(TSource* source)
+            where TSource : unmanaged
+            where TDestination : unmanaged
+        {
+            CheckReinterpretArgs<TSource, TDestination>(true, true);
             return (TDestination*)source;
         }
 
         [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
         [Conditional("UNITY_DOTS_DEBUG")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void CheckReinterpretArgs<TSource, TDestination>(bool requireExactAlignment = false)
+        public static void CheckReinterpretArgs<TSource, TDestination>(bool exactSize = true, bool exactAlignment = true)
             where TSource : unmanaged
             where TDestination : unmanaged
         {
@@ -48,9 +66,19 @@ namespace Unity.Collections.LowLevel.Unsafe
                 int sizeSource = sizeof(TSource);
                 int sizeDestination = sizeof(TDestination);
 
-                if (sizeSource != sizeDestination)
+                if (exactSize)
                 {
-                    throw new InvalidOperationException($"Cannot reinterpret between types of different sizes: source = {sizeSource}, destination = {sizeDestination}.");
+                    if (sizeSource != sizeDestination)
+                    {
+                        throw new InvalidOperationException($"Cannot reinterpret between types of different sizes: Source = {sizeSource}, Destination = {sizeDestination}.");
+                    }
+                }
+                else
+                {
+                    if (sizeDestination > sizeSource)
+                    {
+                        throw new InvalidOperationException($"Cannot reinterpret to a bigger type: Source = {sizeSource}, Destination = {sizeDestination}.");
+                    }
                 }
             }
 
@@ -59,18 +87,18 @@ namespace Unity.Collections.LowLevel.Unsafe
                 int alignSource = UnsafeUtility.AlignOf<TSource>();
                 int alignDestination = UnsafeUtility.AlignOf<TDestination>();
 
-                if (requireExactAlignment)
+                if (exactAlignment)
                 {
                     if (alignSource != alignDestination)
                     {
-                        throw new InvalidOperationException($"Cannot reinterpret between types of different alignments: source = {alignSource}, destination = {alignDestination}.");
+                        throw new InvalidOperationException($"Cannot reinterpret between types of different alignments: Source = {alignSource}, Destination = {alignDestination}.");
                     }
                 }
                 else
                 {
                     if (alignDestination > alignSource)
                     {
-                        throw new InvalidOperationException($"Cannot reinterpret to an over-aligned type: source = {alignSource}, destination = {alignDestination}.");
+                        throw new InvalidOperationException($"Cannot reinterpret to an over-aligned type: Source = {alignSource}, Destination = {alignDestination}.");
                     }
                 }
             }

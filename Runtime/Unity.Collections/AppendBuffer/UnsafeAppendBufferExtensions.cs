@@ -15,7 +15,7 @@ namespace Unity.Collections.LowLevel.Unsafe
 
             if (capacity > self.Capacity)
             {
-                ref UntypedUnsafeListMutable casted = ref Reinterpret<UnsafeAppendBuffer, UntypedUnsafeListMutable>(ref self);
+                ref UntypedUnsafeListMutable casted = ref ReinterpretExact<UnsafeAppendBuffer, UntypedUnsafeListMutable>(ref self);
 
                 if (keepOldData)
                 {

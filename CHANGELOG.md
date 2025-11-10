@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.14.3] - 2025-11-11
+
+* UnsafeUtility improvements
+
 ## [0.14.2] - 2025-11-09
 
 * Span collection improvements
