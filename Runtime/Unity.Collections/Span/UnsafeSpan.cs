@@ -5,10 +5,11 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using Unity.Burst.CompilerServices;
 using Unity.Mathematics;
+using static System.Runtime.CompilerServices.Unsafe;
 using static Unity.Collections.CollectionHelper;
 using static Unity.Collections.CollectionHelper2;
+using static Unity.Collections.LowLevel.Unsafe.UnsafeUtility;
 using static Unity.Collections.LowLevel.Unsafe.UnsafeUtility2;
-using SystemUnsafe = System.Runtime.CompilerServices.Unsafe;
 
 namespace Unity.Collections.LowLevel.Unsafe
 {
@@ -188,7 +189,7 @@ namespace Unity.Collections.LowLevel.Unsafe
             else
             {
                 // No Burst
-                SystemUnsafe.InitBlock(Ptr, 0, (uint)byteCount);
+                InitBlock(Ptr, 0, (uint)byteCount);
             }
         }
 
@@ -202,12 +203,12 @@ namespace Unity.Collections.LowLevel.Unsafe
                 if (Constant.IsConstantExpression(true))
                 {
                     // Burst
-                    UnsafeUtility.MemSet(Ptr, *(byte*)&value, Length);
+                    MemSet(Ptr, *(byte*)&value, Length);
                 }
                 else
                 {
                     // No Burst
-                    SystemUnsafe.InitBlock(Ptr, *(byte*)&value, (uint)Length);
+                    InitBlock(Ptr, *(byte*)&value, (uint)Length);
                 }
             }
             else if (Constant.IsConstantExpression(value) || ((32 % sizeof(T)) == 0) || ((sizeof(T) % 16) == 0))
@@ -222,7 +223,7 @@ namespace Unity.Collections.LowLevel.Unsafe
             else
             {
                 // Generic
-                UnsafeUtility.MemCpyReplicate(Ptr, &value, sizeof(T), Length);
+                MemCpyReplicate(Ptr, &value, sizeof(T), Length);
             }
         }
 
@@ -236,12 +237,12 @@ namespace Unity.Collections.LowLevel.Unsafe
             if (Constant.IsConstantExpression(true))
             {
                 // Burst
-                UnsafeUtility.MemCpy(Ptr, other.Ptr, byteCount);
+                MemCpy(Ptr, other.Ptr, byteCount);
             }
             else
             {
                 // No Burst
-                SystemUnsafe.CopyBlock(Ptr, other.Ptr, (uint)byteCount);
+                CopyBlock(Ptr, other.Ptr, (uint)byteCount);
             }
         }
 

@@ -1,6 +1,5 @@
 using System;
 using System.Runtime.CompilerServices;
-using System.Text;
 using static Unity.Collections.LowLevel.Unsafe.UnsafeUtility2;
 
 namespace Unity.Collections.LowLevel.Unsafe
@@ -27,10 +26,17 @@ namespace Unity.Collections.LowLevel.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static UnsafeText Create(ReadOnlySpan<char> source, AllocatorManager.AllocatorHandle allocator)
         {
-            int maxCapacity = source.Length * 3; // 2-byte codepoint -> replacement
+            int maxCapacity =
+                4 + // BOM
+                (source.Length * 3); // 2-byte codepoint -> 3-byte replacement
 
             UnsafeList<byte> list = UnsafeListExtensions2.Create<byte>(maxCapacity + 1, allocator);
-            int byteCount = Encoding.UTF8.GetBytes(source, new Span<byte>(list.Ptr, maxCapacity));
+            int byteCount;
+
+            fixed (char* sourcePtr = source)
+            {
+                _ = Unicode.Utf16ToUtf8(sourcePtr, source.Length, list.Ptr, out byteCount, maxCapacity);
+            }
 
             list.m_length = byteCount + 1;
             list.Ptr[byteCount] = 0x0;

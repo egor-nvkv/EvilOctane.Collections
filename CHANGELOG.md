@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.14.4] - 2025-11-18
+
+* Made UnsafeTextExtensions2.Create Burst compatible
+
 ## [0.14.3] - 2025-11-11
 
 * UnsafeUtility improvements

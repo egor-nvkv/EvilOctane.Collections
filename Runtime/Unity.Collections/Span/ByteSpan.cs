@@ -7,7 +7,7 @@ using static System.Runtime.CompilerServices.Unsafe;
 using static Unity.Collections.CollectionHelper;
 using static Unity.Collections.CollectionHelper2;
 using static Unity.Collections.FixedStringMethods;
-using SystemUnsafe = System.Runtime.CompilerServices.Unsafe;
+using static Unity.Collections.LowLevel.Unsafe.UnsafeUtility;
 
 namespace Unity.Collections.LowLevel.Unsafe
 {
@@ -119,7 +119,7 @@ namespace Unity.Collections.LowLevel.Unsafe
                 }
 
                 int count = math.min(Length, other.Length);
-                int cmp = UnsafeUtility.MemCmp(Ptr, other.Ptr, count);
+                int cmp = MemCmp(Ptr, other.Ptr, count);
 
                 return cmp == 0 ? Length - other.Length : cmp;
             }
@@ -157,6 +157,7 @@ namespace Unity.Collections.LowLevel.Unsafe
                 {
                     if (Ptr == other.Ptr)
                     {
+                        // Same ptr
                         return Length == other.Length;
                     }
                 }
@@ -167,7 +168,7 @@ namespace Unity.Collections.LowLevel.Unsafe
                     return false;
                 }
 
-                return UnsafeUtility.MemCmp(Ptr, other.Ptr, Length) == 0;
+                return MemCmp(Ptr, other.Ptr, Length) == 0;
             }
             else
             {
@@ -230,12 +231,12 @@ namespace Unity.Collections.LowLevel.Unsafe
             if (Constant.IsConstantExpression(true))
             {
                 // Burst
-                UnsafeUtility.MemCpy(Ptr, other.Ptr, Length);
+                MemCpy(Ptr, other.Ptr, Length);
             }
             else
             {
                 // No Burst
-                SystemUnsafe.CopyBlock(Ptr, other.Ptr, (uint)Length);
+                CopyBlock(Ptr, other.Ptr, (uint)Length);
             }
         }
 
