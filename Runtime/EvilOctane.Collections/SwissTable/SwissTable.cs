@@ -314,6 +314,11 @@ namespace EvilOctane.Collections
         {
             CheckContainerCapacity(capacityCeilGroupSize);
 
+            if (capacityCeilGroupSize == 0)
+            {
+                return;
+            }
+
             if (Hint.Unlikely(capacityCeilGroupSize / GroupSize < 1))
             {
                 throw new ArgumentOutOfRangeException($"Capacity cannot be smaller than group size ({GroupSize}).");

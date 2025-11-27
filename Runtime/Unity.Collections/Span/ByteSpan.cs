@@ -224,6 +224,12 @@ namespace Unity.Collections.LowLevel.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly UnsafeSpan<byte> AsUnsafeSpan()
+        {
+            return new UnsafeSpan<byte>(Ptr, Length);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public readonly void CopyFrom(ByteSpan other)
         {
             CheckCopyLengths(sourceLength: other.LengthField, destLength: LengthField);

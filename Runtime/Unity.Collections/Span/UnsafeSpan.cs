@@ -247,17 +247,6 @@ namespace Unity.Collections.LowLevel.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly void CopyFromInline(UnsafeSpan<T> other)
-        {
-            CheckCopyLengths(sourceLength: other.LengthField, destLength: LengthField);
-
-            for (int index = 0; index != Length; ++index)
-            {
-                Ptr[index] = other.Ptr[index];
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static implicit operator Span<T>(UnsafeSpan<T> self)
         {
             return new Span<T>(self.Ptr, self.LengthField);

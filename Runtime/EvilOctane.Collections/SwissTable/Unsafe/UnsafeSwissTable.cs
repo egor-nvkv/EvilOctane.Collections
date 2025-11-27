@@ -75,6 +75,12 @@ namespace EvilOctane.Collections.LowLevel.Unsafe
             get => capacityCeilGroupSize;
         }
 
+        public readonly AllocatorManager.AllocatorHandle Allocator
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => allocator;
+        }
+
         public TValue this[TKey key]
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]

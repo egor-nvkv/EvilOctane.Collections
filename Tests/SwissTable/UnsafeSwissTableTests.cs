@@ -100,6 +100,20 @@ namespace EvilOctane.Collections.Tests
         }
 
         [Test]
+        public void TestDefaultInitialized()
+        {
+            IntIntXXH3Table table = new();
+
+            Assert.IsTrue(table.IsEmpty);
+            Assert.IsTrue(table.IsFull);
+
+            SwissTable<int, int>.Enumerator enumerator = table.GetEnumerator();
+            Assert.IsFalse(enumerator.MoveNext());
+
+            Assert.DoesNotThrow(() => table.Dispose());
+        }
+
+        [Test]
         public void TestJobLifetime()
         {
             IntIntXXH3Table table = default;

@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.14.5] - 2025-11-27
+
+* SwissTable fixes
+
 ## [0.14.4] - 2025-11-18
 
 * Made UnsafeTextExtensions2.Create Burst compatible
