@@ -24,6 +24,18 @@ namespace Unity.Collections.LowLevel.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static UnsafeText Create(ByteSpan source, AllocatorManager.AllocatorHandle allocator)
+        {
+            UnsafeList<byte> list = UnsafeListExtensions2.Create<byte>(source.Length + 1, allocator);
+
+            list.m_length = source.Length + 1;
+            new ByteSpan(list.Ptr, source.Length).CopyFrom(source);
+            list.Ptr[source.Length] = 0x0;
+
+            return ReinterpretExact<UnsafeList<byte>, UnsafeText>(ref list);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static UnsafeText Create(ReadOnlySpan<char> source, AllocatorManager.AllocatorHandle allocator)
         {
             int maxCapacity =

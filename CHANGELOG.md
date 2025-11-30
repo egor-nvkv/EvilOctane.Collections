@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.14.6] - 2025-11-30
+
+* UnsafeText utility
+
 ## [0.14.5] - 2025-11-27
 
 * SwissTable fixes
