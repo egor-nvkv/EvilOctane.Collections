@@ -1,9 +1,9 @@
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using Unity.Burst.CompilerServices;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using Unity.Mathematics;
-using UnityEngine;
 using UnityEngine.Assertions;
 using static Unity.Collections.CollectionHelper;
 using static Unity.Collections.CollectionHelper2;
@@ -74,18 +74,18 @@ namespace Unity.Collections
             }.Schedule(inputDeps);
         }
 
-        internal static void IncreaseListCapacityKeepOldData(ref UntypedUnsafeListMutable list, int elementSize, int elementAlignment, nint capacity)
+        public static void IncreaseListCapacityKeepOldData(ref UntypedUnsafeListMutable list, int elementSize, int elementAlignment, nint capacity)
         {
             IncreaseListCapacity(ref list, elementSize, elementAlignment, capacity, keepOldData: true);
         }
 
-        internal static void IncreaseListCapacityTrashOldData(ref UntypedUnsafeListMutable list, int elementSize, int elementAlignment, nint capacity)
+        public static void IncreaseListCapacityTrashOldData(ref UntypedUnsafeListMutable list, int elementSize, int elementAlignment, nint capacity)
         {
             IncreaseListCapacity(ref list, elementSize, elementAlignment, capacity, keepOldData: false);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static void IncreaseListCapacity(ref UntypedUnsafeListMutable list, int elementSize, int elementAlignment, nint capacity, bool keepOldData)
+        public static void IncreaseListCapacity(ref UntypedUnsafeListMutable list, int elementSize, int elementAlignment, nint capacity, bool keepOldData)
         {
             Assert.IsTrue(list.Ptr != null);
             Assert.IsTrue(capacity > list.m_capacity);
@@ -114,32 +114,66 @@ namespace Unity.Collections
 
         public struct Unmanaged
         {
-            [HideInCallstack]
+            [DebuggerStepThrough]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static void* Allocate(long size, int align, AllocatorManager.AllocatorHandle allocator)
             {
                 return Memory.Unmanaged.Allocate(size, align, allocator);
             }
 
-            [HideInCallstack]
+            [DebuggerStepThrough]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static void Free(void* pointer, AllocatorManager.AllocatorHandle allocator)
             {
                 Memory.Unmanaged.Free(pointer, allocator);
             }
 
-            [HideInCallstack]
+            [DebuggerStepThrough]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static T* Allocate<T>(AllocatorManager.AllocatorHandle allocator) where T : unmanaged
             {
                 return Memory.Unmanaged.Allocate<T>(allocator);
             }
 
-            [HideInCallstack]
+            [DebuggerStepThrough]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static void Free<T>(T* pointer, AllocatorManager.AllocatorHandle allocator) where T : unmanaged
             {
                 Memory.Unmanaged.Free(pointer, allocator);
+            }
+
+            public struct Array
+            {
+                [DebuggerStepThrough]
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static void* Resize(void* oldPointer, long oldCount, long newCount, AllocatorManager.AllocatorHandle allocator, long size, int align)
+                {
+                    return Memory.Unmanaged.Array.Resize(oldPointer, oldCount, newCount, allocator, size, align);
+                }
+
+                [DebuggerStepThrough]
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static T* Resize<T>(T* oldPointer, long oldCount, long newCount, AllocatorManager.AllocatorHandle allocator)
+                    where T : unmanaged
+                {
+                    return Memory.Unmanaged.Array.Resize(oldPointer, oldCount, newCount, allocator);
+                }
+
+                [DebuggerStepThrough]
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static T* Allocate<T>(long count, AllocatorManager.AllocatorHandle allocator)
+                    where T : unmanaged
+                {
+                    return Memory.Unmanaged.Array.Allocate<T>(count, allocator);
+                }
+
+                [DebuggerStepThrough]
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static void Free<T>(T* pointer, long count, AllocatorManager.AllocatorHandle allocator)
+                    where T : unmanaged
+                {
+                    Memory.Unmanaged.Array.Free(pointer, count, allocator);
+                }
             }
         }
     }

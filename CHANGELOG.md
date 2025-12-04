@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.15.0] - 2025-12-04
+
+* LogUtility moved to EvilOctane.Entities
+* Misc utility improvements
+
 ## [0.14.6] - 2025-11-30
 
 * UnsafeText utility

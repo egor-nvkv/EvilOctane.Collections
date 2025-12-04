@@ -2,27 +2,26 @@ using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using Unity.Burst.CompilerServices;
-using UnityEngine;
 
 namespace Unity.Collections
 {
     public static unsafe partial class CollectionHelper2
     {
-        [DebuggerStepThrough, HideInCallstack]
+        [DebuggerStepThrough]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static nint Align(nint size, int alignmentPowerOfTwo)
         {
             return (nint)CollectionHelper.Align((ulong)size, (ulong)alignmentPowerOfTwo);
         }
 
-        [DebuggerStepThrough, HideInCallstack]
+        [DebuggerStepThrough]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static nuint Align(nuint size, uint alignmentPowerOfTwo)
         {
             return (nuint)CollectionHelper.Align(size, alignmentPowerOfTwo);
         }
 
-        [DebuggerStepThrough, HideInCallstack]
+        [DebuggerStepThrough]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void* AlignPointer(void* ptr, int alignmentPowerOfTwo)
         {
