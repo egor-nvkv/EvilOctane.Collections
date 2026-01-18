@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
 using static EvilOctane.Collections.SwissTable;
@@ -104,7 +103,6 @@ namespace EvilOctane.Collections
             }
         }
 
-        [StructLayout(LayoutKind.Sequential)]
         public struct Enumerator : IEnumerator<Pointer<TKey>>
         {
             internal SwissTable.Enumerator enumerator;

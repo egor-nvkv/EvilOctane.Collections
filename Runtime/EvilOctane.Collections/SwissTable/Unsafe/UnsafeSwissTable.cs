@@ -3,7 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using Unity.Burst.CompilerServices;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;
@@ -17,7 +16,6 @@ using static Unity.Collections.LowLevel.Unsafe.UnsafeUtility2;
 
 namespace EvilOctane.Collections.LowLevel.Unsafe
 {
-    [StructLayout(LayoutKind.Sequential)]
     [DebuggerTypeProxy(typeof(UnsafeSwissTableDebuggerTypeProxy<,,>))]
     [GenerateTestsForBurstCompatibility(GenericTypeArguments = new[] { typeof(int), typeof(int), typeof(XXH3PodHasher<int>) })]
     public unsafe struct UnsafeSwissTable<TKey, TValue, THasher> : IEnumerable<KeyValueRef<TKey, TValue>>, INativeDisposable

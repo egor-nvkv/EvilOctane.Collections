@@ -1,9 +1,7 @@
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 
 namespace EvilOctane.Collections
 {
-    [StructLayout(LayoutKind.Sequential)]
     public struct KeyValue<TKey, TValue>
         where TKey : unmanaged
         where TValue : unmanaged

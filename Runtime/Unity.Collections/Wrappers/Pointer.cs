@@ -1,12 +1,10 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using static System.Runtime.CompilerServices.Unsafe;
 using static Unity.Collections.LowLevel.Unsafe.UnsafeUtility2;
 
 namespace Unity.Collections.LowLevel.Unsafe
 {
-    [StructLayout(LayoutKind.Sequential)]
     public readonly unsafe struct Pointer<T>
         where T : unmanaged
     {

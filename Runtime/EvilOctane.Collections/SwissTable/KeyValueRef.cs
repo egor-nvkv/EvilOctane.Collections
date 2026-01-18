@@ -1,10 +1,8 @@
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using Unity.Collections.LowLevel.Unsafe;
 
 namespace EvilOctane.Collections
 {
-    [StructLayout(LayoutKind.Sequential)]
     public readonly struct KeyValueRef<TKey, TValue>
         where TKey : unmanaged
         where TValue : unmanaged

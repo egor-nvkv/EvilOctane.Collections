@@ -1,8 +1,5 @@
-using System.Runtime.InteropServices;
-
 namespace Unity.Collections.LowLevel.Unsafe
 {
-    [StructLayout(LayoutKind.Sequential)]
     public unsafe struct UntypedUnsafeListMutable
     {
 #pragma warning disable 169

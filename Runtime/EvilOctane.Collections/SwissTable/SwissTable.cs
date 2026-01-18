@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using Unity.Burst.CompilerServices;
 using Unity.Burst.Intrinsics;
 using Unity.Collections.LowLevel.Unsafe;
@@ -377,7 +376,6 @@ namespace EvilOctane.Collections
             }
         }
 
-        [StructLayout(LayoutKind.Sequential)]
         public struct Enumerator
         {
             [NativeDisableUnsafePtrRestriction]
@@ -595,7 +593,6 @@ namespace EvilOctane.Collections
             }
         }
 
-        [StructLayout(LayoutKind.Sequential)]
         public struct Enumerator : IEnumerator<KeyValueRef<TKey, TValue>>
         {
             internal SwissTable.Enumerator enumerator;
